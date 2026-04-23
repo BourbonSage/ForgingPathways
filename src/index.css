@@ -1,42 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Harmony Haven design system. Warm, dignified, hopeful.
+   All colors MUST be HSL. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Warm cream background, deep forest text */
+    --background: 40 33% 97%;
+    --foreground: 155 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 155 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 155 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Soft sage green — primary brand */
+    --primary: 155 35% 38%;
+    --primary-foreground: 40 40% 98%;
+    --primary-soft: 155 40% 92%;
+    --primary-glow: 155 45% 55%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Calming sky blue — secondary */
+    --secondary: 200 50% 92%;
+    --secondary-foreground: 205 50% 22%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 40 25% 93%;
+    --muted-foreground: 155 12% 42%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Warm gold accent — celebrations, credits */
+    --accent: 38 75% 88%;
+    --accent-foreground: 30 60% 25%;
+    --accent-glow: 38 85% 62%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 40 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 155 15% 88%;
+    --input: 155 15% 88%;
+    --ring: 155 35% 38%;
 
-    --radius: 0.5rem;
+    --radius: 1.25rem;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(155 40% 92%) 0%, hsl(200 55% 93%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(155 40% 45%) 0%, hsl(175 40% 50%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(38 80% 75%) 0%, hsl(25 75% 70%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 30% 98%) 100%);
+
+    /* Shadows — soft, warm */
+    --shadow-soft: 0 4px 20px -4px hsl(155 30% 30% / 0.08);
+    --shadow-card: 0 8px 28px -8px hsl(155 30% 25% / 0.12);
+    --shadow-glow: 0 8px 32px -8px hsl(155 45% 50% / 0.35);
+
+    /* Motion */
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --sidebar-background: 0 0% 98%;
 
