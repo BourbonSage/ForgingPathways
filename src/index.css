@@ -122,7 +122,28 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html {
+    -webkit-tap-highlight-color: transparent;
   }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  .gradient-hero { background: var(--gradient-hero); }
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-warm { background: var(--gradient-warm); }
+  .gradient-card { background: var(--gradient-card); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+  .safe-top { padding-top: max(env(safe-area-inset-top), 1rem); }
 }
