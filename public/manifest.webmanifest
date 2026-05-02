@@ -1,13 +1,13 @@
 {
-  "name": "Harmony Haven",
-  "short_name": "Harmony",
-  "description": "Earn Harmony Credits. Build dignity.",
+  "name": "ForgingPathways",
+  "short_name": "ForgingPathways",
+  "description": "Forge your path forward. Earn. Build. Advance.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f8f5ee",
-  "theme_color": "#5a8a6e",
-  "categories": ["lifestyle", "social"],
+  "theme_color": "#1f4d2b",
+  "categories": ["lifestyle", "productivity", "education"],
   "icons": [
     {
       "src": "/icon-192.png",
