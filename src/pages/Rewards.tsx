@@ -32,7 +32,7 @@ const Rewards = () => {
         <div>
           <p className="text-xs text-muted-foreground">Your balance</p>
           <p className="font-display text-3xl text-foreground font-semibold">
-            {balance} <span className="text-base font-normal text-muted-foreground">HC</span>
+            {balance} <span className="text-base font-normal text-muted-foreground">PC</span>
           </p>
         </div>
         <div className="w-14 h-14 rounded-full gradient-warm flex items-center justify-center">
