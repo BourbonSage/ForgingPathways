@@ -49,7 +49,7 @@ const initialTasks: Task[] = [
   {
     id: "4",
     title: "Share your story",
-    org: "Harmony Haven",
+    org: "ForgingPathways",
     location: "Anywhere",
     duration: "20 min",
     credits: 3,
@@ -65,7 +65,7 @@ const Tasks = () => {
     if (tasks.length === 0) return;
     const [current, ...rest] = tasks;
     if (action === "accept") {
-      toast.success(`Saved! You'll earn ${current.credits} HC.`);
+      toast.success(`Saved! You'll earn ${current.credits} PC.`);
     }
     setTasks(rest);
   };

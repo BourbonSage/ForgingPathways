@@ -13,7 +13,7 @@ const activity = [
   { date: "Today", title: "Sorted produce", org: "Lowcountry Food Bank", credits: 8 },
   { date: "Yesterday", title: "Packed hygiene kits", org: "Lowcountry Food Bank", credits: 5 },
   { date: "Mon", title: "Greeted neighbors", org: "Community Center", credits: 6 },
-  { date: "Last week", title: "Shared your story", org: "Harmony Haven", credits: 3 },
+  { date: "Last week", title: "Shared your story", org: "ForgingPathways", credits: 3 },
 ];
 
 const Progress = () => {
@@ -31,7 +31,7 @@ const Progress = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="rounded-3xl gradient-hero p-6 mb-6 border border-border/50"
       >
-        <p className="text-sm text-muted-foreground mb-1">Lifetime Harmony</p>
+        <p className="text-sm text-muted-foreground mb-1">Lifetime Pathway</p>
         <div className="flex items-end gap-3 mb-4">
           <span className="font-display text-5xl text-foreground font-semibold">128</span>
           <span className="text-base text-muted-foreground mb-2">credits earned</span>

@@ -1,40 +1,45 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Heart, Shield } from "lucide-react";
+import { Hammer, TrendingUp, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const { user, isPending, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login", { replace: true });
+    if (!loading && user && isPending) navigate("/pending", { replace: true });
+  }, [user, isPending, loading, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col gradient-hero px-6 pt-16 pb-10 safe-top">
+    <div className="min-h-screen flex flex-col gradient-hero px-6 pt-10 pb-10 safe-top">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: "easeOut" }}
         className="flex-1 flex flex-col items-center justify-center text-center"
       >
-        <motion.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.1, type: "spring", bounce: 0.4 }}
-          className="w-24 h-24 rounded-full gradient-primary flex items-center justify-center shadow-glow mb-8"
-        >
-          <Sparkles className="w-11 h-11 text-primary-foreground" strokeWidth={1.6} />
-        </motion.div>
+        <Logo maxWidth={200} />
 
-        <h1 className="font-display text-5xl leading-[1.05] text-foreground mb-4">
+        <h1 className="font-display text-4xl leading-[1.05] text-foreground mt-6 mb-3">
           Welcome to <br />
-          <span className="italic text-primary">Harmony Haven</span>
+          <span className="italic text-primary">ForgingPathways</span>
         </h1>
 
-        <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-10">
-          A community where small contributions become real change. Earn credits, build dignity, share the harvest.
+        <p className="font-display italic text-base text-foreground/80 max-w-xs leading-relaxed mb-2">
+          Forge your path forward.
+        </p>
+        <p className="text-sm font-semibold text-primary mb-10">
+          Earn. Build. Advance.
         </p>
 
-        <div className="grid grid-cols-1 gap-3 w-full max-w-sm mb-10">
-          <Feature icon={Sparkles} title="Earn Harmony Credits" desc="Help out, gain credits — at the food bank and beyond." />
-          <Feature icon={Heart} title="Redeem essentials" desc="Trade credits for groceries, hygiene, transit." />
+        <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
+          <Feature icon={Hammer} title="Earn credits" desc="Help out at Lowcountry Food Bank and partner sites." />
+          <Feature icon={TrendingUp} title="Build & advance" desc="Trade credits for groceries, transit, and essentials." />
           <Feature icon={Shield} title="Private & dignified" desc="Your story stays yours. Always." />
         </div>
       </motion.div>
@@ -42,22 +47,15 @@ const Welcome = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.5 }}
-        className="space-y-3"
+        transition={{ duration: 0.6, delay: 0.4 }}
       >
         <Button
           size="lg"
           onClick={() => navigate("/home")}
           className="w-full h-14 text-base font-semibold rounded-2xl gradient-primary shadow-glow hover:shadow-card transition-all"
         >
-          Get started
+          Enter the app
         </Button>
-        <button
-          onClick={() => navigate("/home")}
-          className="w-full text-sm text-muted-foreground py-2 hover:text-foreground transition-colors"
-        >
-          I already have an account
-        </button>
       </motion.div>
     </div>
   );
