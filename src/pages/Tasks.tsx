@@ -49,7 +49,7 @@ const initialTasks: Task[] = [
   {
     id: "4",
     title: "Share your story",
-    org: "Harmony Haven",
+    org: "ForgingPathways",
     location: "Anywhere",
     duration: "20 min",
     credits: 3,

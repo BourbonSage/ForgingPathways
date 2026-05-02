@@ -24,7 +24,7 @@ export const CreditBadge = ({ amount, size = "md", className }: CreditBadgeProps
       )}
     >
       <Sparkles className={cn("text-accent-glow fill-accent-glow", iconSizes[size])} />
-      {amount} HC
+      {amount} PC
     </span>
   );
 };
