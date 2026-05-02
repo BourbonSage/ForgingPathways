@@ -1,24 +1,47 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Calendar } from "lucide-react";
 import { CreditBadge } from "@/components/CreditBadge";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [name, setName] = useState("Friend");
+  const [credits, setCredits] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("full_name, credits")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          if (data.full_name) setName(data.full_name.split(" ")[0]);
+          setCredits(data.credits || 0);
+        }
+      });
+  }, [user]);
+
+  const initial = name.charAt(0).toUpperCase();
 
   return (
-    <div className="px-5 pt-12 pb-6 safe-top">
+    <div className="px-5 pt-4 pb-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-8"
+        className="flex items-center justify-between mb-6"
       >
         <div>
-          <p className="text-sm text-muted-foreground">Good afternoon,</p>
-          <h1 className="font-display text-3xl text-foreground">Friend</h1>
+          <p className="text-sm text-muted-foreground">Hello,</p>
+          <h1 className="font-display text-3xl text-foreground">{name}</h1>
         </div>
         <div className="w-11 h-11 rounded-full gradient-warm flex items-center justify-center font-display font-semibold text-accent-foreground">
-          F
+          {initial}
         </div>
       </motion.header>
 
@@ -33,8 +56,8 @@ const Home = () => {
 
         <p className="text-sm opacity-90 mb-1 relative">Your balance</p>
         <div className="flex items-baseline gap-2 mb-5 relative">
-          <span className="font-display text-5xl font-semibold">42</span>
-          <span className="text-lg opacity-90">Harmony Credits</span>
+          <span className="font-display text-5xl font-semibold">{credits}</span>
+          <span className="text-lg opacity-90">Pathway Credits</span>
         </div>
         <button
           onClick={() => navigate("/rewards")}
@@ -52,10 +75,7 @@ const Home = () => {
       >
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-xl text-foreground">Today's opportunities</h2>
-          <button
-            onClick={() => navigate("/tasks")}
-            className="text-sm text-primary font-medium"
-          >
+          <button onClick={() => navigate("/tasks")} className="text-sm text-primary font-medium">
             See all
           </button>
         </div>
@@ -65,9 +85,7 @@ const Home = () => {
           className="block w-full text-left rounded-3xl bg-card shadow-card p-5 border border-border/50 hover:shadow-glow transition-all"
         >
           <div className="flex items-start justify-between mb-3">
-            <span className="text-xs font-semibold text-primary bg-primary-soft px-2.5 py-1 rounded-full">
-              Featured
-            </span>
+            <span className="text-xs font-semibold text-primary bg-primary-soft px-2.5 py-1 rounded-full">Featured</span>
             <CreditBadge amount={8} size="sm" />
           </div>
           <h3 className="font-display text-lg text-foreground mb-2 leading-snug">
@@ -80,17 +98,13 @@ const Home = () => {
         </button>
       </motion.section>
 
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <h2 className="font-display text-xl text-foreground mb-3">A note for today</h2>
         <div className="rounded-3xl bg-secondary p-5 text-secondary-foreground">
           <p className="font-display italic text-base leading-relaxed">
-            "You belong here. Every small act adds to something bigger than any of us."
+            "Forge your path forward — one step, one act, one day at a time."
           </p>
-          <p className="text-xs mt-2 opacity-70">— The Harmony Haven team</p>
+          <p className="text-xs mt-2 opacity-70">— The ForgingPathways team</p>
         </div>
       </motion.section>
     </div>
