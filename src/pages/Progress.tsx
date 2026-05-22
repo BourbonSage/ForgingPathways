@@ -1,29 +1,79 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, TrendingUp, Heart, Award } from "lucide-react";
+import { Sparkles, TrendingUp, Award, Loader2 } from "lucide-react";
 import { CreditBadge } from "@/components/CreditBadge";
+import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
+import { supabase } from "@/integrations/supabase/client";
 
-const stats = [
-  { label: "Earned this month", value: "42", icon: Sparkles, tone: "primary" },
-  { label: "Tasks completed", value: "7", icon: TrendingUp, tone: "secondary" },
-  { label: "Hours given", value: "9.5", icon: Heart, tone: "warm" },
-  { label: "Streak", value: "3 wks", icon: Award, tone: "primary" },
-];
+interface ClaimRow {
+  claimed_at: string;
+  tasks: { title: string; org: string; credits: number } | null;
+}
 
-const activity = [
-  { date: "Today", title: "Sorted produce", org: "Lowcountry Food Bank", credits: 8 },
-  { date: "Yesterday", title: "Packed hygiene kits", org: "Lowcountry Food Bank", credits: 5 },
-  { date: "Mon", title: "Greeted neighbors", org: "Community Center", credits: 6 },
-  { date: "Last week", title: "Shared your story", org: "ForgingPathways", credits: 3 },
-];
+// Monday-start week
+const startOfWeek = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x;
+};
+
+const weekKey = (d: Date) => startOfWeek(d).toISOString().slice(0, 10);
+
+const computeStreak = (dates: Date[]) => {
+  if (dates.length === 0) return 0;
+  const weeks = new Set(dates.map((d) => weekKey(d)));
+  let streak = 0;
+  let cursor = startOfWeek(new Date());
+  while (weeks.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 7);
+  }
+  return streak;
+};
+
+const formatDay = (iso: string) => {
+  const d = new Date(iso);
+  const today = new Date();
+  const yest = new Date();
+  yest.setDate(yest.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yest.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+};
 
 const Progress = () => {
+  const { user } = useAuth();
+  const { credits } = useCredits();
+  const [claims, setClaims] = useState<ClaimRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("task_claims")
+      .select("claimed_at, tasks(title, org, credits)")
+      .eq("user_id", user.id)
+      .order("claimed_at", { ascending: false })
+      .then(({ data }) => {
+        setClaims((data as any) ?? []);
+        setLoading(false);
+      });
+  }, [user]);
+
+  const weekStart = startOfWeek(new Date());
+  const completedThisWeek = claims.filter(
+    (c) => new Date(c.claimed_at) >= weekStart
+  ).length;
+  const streak = computeStreak(claims.map((c) => new Date(c.claimed_at)));
+
   return (
-    <div className="px-5 pt-12 pb-6 safe-top">
+    <div className="px-5 pt-4 pb-6">
       <header className="mb-6">
         <h1 className="font-display text-3xl text-foreground">Your progress</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Every step is part of the whole
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">Every step is part of the whole</p>
       </header>
 
       <motion.section
@@ -31,62 +81,83 @@ const Progress = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="rounded-3xl gradient-hero p-6 mb-6 border border-border/50"
       >
-        <p className="text-sm text-muted-foreground mb-1">Lifetime Pathway</p>
-        <div className="flex items-end gap-3 mb-4">
-          <span className="font-display text-5xl text-foreground font-semibold">128</span>
-          <span className="text-base text-muted-foreground mb-2">credits earned</span>
+        <p className="text-sm text-muted-foreground mb-1">Total credits earned</p>
+        <div className="flex items-end gap-3">
+          <span className="font-display text-5xl text-foreground font-semibold">{credits}</span>
+          <span className="text-base text-muted-foreground mb-2">Forge Credits</span>
         </div>
-        <div className="h-2.5 bg-card rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "64%" }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="h-full gradient-primary rounded-full"
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          72 more to reach <span className="font-semibold text-foreground">Bright Helper</span> status
-        </p>
       </motion.section>
 
-      <section className="grid grid-cols-2 gap-3 mb-8">
-        {stats.map((s, i) => (
-          <motion.div
-            key={s.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.05 }}
-            className="rounded-2xl bg-card p-4 shadow-soft border border-border/50"
-          >
-            <s.icon className={`w-5 h-5 mb-2 ${s.tone === "primary" ? "text-primary" : s.tone === "secondary" ? "text-secondary-foreground" : "text-accent-glow"}`} />
-            <p className="font-display text-2xl text-foreground font-semibold">{s.value}</p>
-            <p className="text-xs text-muted-foreground leading-tight mt-0.5">{s.label}</p>
-          </motion.div>
-        ))}
+      <section className="grid grid-cols-3 gap-3 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl bg-card p-4 shadow-soft border border-border/50"
+        >
+          <Sparkles className="w-5 h-5 mb-2 text-primary" />
+          <p className="font-display text-2xl text-foreground font-semibold">{credits}</p>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">Total credits</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl bg-card p-4 shadow-soft border border-border/50"
+        >
+          <TrendingUp className="w-5 h-5 mb-2 text-secondary-foreground" />
+          <p className="font-display text-2xl text-foreground font-semibold">{completedThisWeek}</p>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">Tasks this week</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl bg-card p-4 shadow-soft border border-border/50"
+        >
+          <Award className="w-5 h-5 mb-2 text-accent-glow" />
+          <p className="font-display text-2xl text-foreground font-semibold">
+            {streak} {streak === 1 ? "wk" : "wks"}
+          </p>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">Streak</p>
+        </motion.div>
       </section>
 
       <section>
         <h2 className="font-display text-xl text-foreground mb-3">Recent activity</h2>
-        <ul className="space-y-2.5">
-          {activity.map((a, i) => (
-            <motion.li
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + i * 0.05 }}
-              className="flex items-center gap-4 bg-card rounded-2xl p-4 shadow-soft border border-border/50"
-            >
-              <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground truncate">{a.title}</p>
-                <p className="text-xs text-muted-foreground">{a.date} · {a.org}</p>
-              </div>
-              <CreditBadge amount={a.credits} size="sm" />
-            </motion.li>
-          ))}
-        </ul>
+        {loading ? (
+          <div className="flex justify-center py-8 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" />
+          </div>
+        ) : claims.length === 0 ? (
+          <div className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground border border-border/50">
+            No tasks claimed yet. Head to the Task Board to get started.
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            {claims.slice(0, 5).map((a, i) => (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 * i }}
+                className="flex items-center gap-4 bg-card rounded-2xl p-4 shadow-soft border border-border/50"
+              >
+                <div className="w-11 h-11 rounded-full bg-primary-soft flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground truncate">
+                    {a.tasks?.title ?? "Task"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDay(a.claimed_at)} · {a.tasks?.org ?? ""}
+                  </p>
+                </div>
+                <CreditBadge amount={a.tasks?.credits ?? 0} size="sm" />
+              </motion.li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
