@@ -22,6 +22,9 @@ export const AppShell = () => {
           <Logo maxWidth={130} />
         </Link>
         <div className="flex items-center gap-1">
+          <Link to="/rewards" title="Forge Credits balance">
+            <CreditBadge amount={credits} size="sm" />
+          </Link>
           {isAdmin && (
             <Link to="/admin" className="p-2 rounded-lg hover:bg-muted text-primary" title="Admin">
               <ShieldCheck className="w-5 h-5" />
