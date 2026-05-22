@@ -1,7 +1,9 @@
 import { Outlet, Link } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Logo } from "@/components/Logo";
+import { CreditBadge } from "@/components/CreditBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
