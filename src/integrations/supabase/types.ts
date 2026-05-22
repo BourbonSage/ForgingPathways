@@ -83,6 +83,80 @@ export type Database = {
         }
         Relationships: []
       }
+      task_claims: {
+        Row: {
+          claimed_at: string
+          id: string
+          status: Database["public"]["Enums"]["claim_status"]
+          task_id: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+          task_id: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+          task_id?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_claims_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          active: boolean
+          created_at: string
+          credits: number
+          description: string
+          duration: string
+          id: string
+          location: string
+          org: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          credits?: number
+          description: string
+          duration?: string
+          id?: string
+          location?: string
+          org?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          credits?: number
+          description?: string
+          duration?: string
+          id?: string
+          location?: string
+          org?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -119,6 +193,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "partner" | "participant" | "pending"
+      claim_status: "claimed" | "verified"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -247,6 +322,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "partner", "participant", "pending"],
+      claim_status: ["claimed", "verified"],
     },
   },
 } as const

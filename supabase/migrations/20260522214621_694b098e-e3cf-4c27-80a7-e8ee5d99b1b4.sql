@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.award_credits_on_claim() FROM PUBLIC, anon, authenticated;

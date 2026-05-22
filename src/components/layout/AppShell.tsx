@@ -1,12 +1,15 @@
 import { Outlet, Link } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Logo } from "@/components/Logo";
+import { CreditBadge } from "@/components/CreditBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import { ShieldCheck, LogOut } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 export const AppShell = () => {
   const { user, loading, isPending, isAdmin, signOut } = useAuth();
+  const { credits } = useCredits();
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
@@ -19,6 +22,9 @@ export const AppShell = () => {
           <Logo maxWidth={130} />
         </Link>
         <div className="flex items-center gap-1">
+          <Link to="/rewards" title="Forge Credits balance">
+            <CreditBadge amount={credits} size="sm" />
+          </Link>
           {isAdmin && (
             <Link to="/admin" className="p-2 rounded-lg hover:bg-muted text-primary" title="Admin">
               <ShieldCheck className="w-5 h-5" />

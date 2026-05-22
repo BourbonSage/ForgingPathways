@@ -4,26 +4,24 @@ import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Calendar } from "lucide-react";
 import { CreditBadge } from "@/components/CreditBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { useCredits } from "@/hooks/useCredits";
 import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { credits } = useCredits();
   const [name, setName] = useState("Friend");
-  const [credits, setCredits] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("full_name, credits")
+      .select("full_name")
       .eq("id", user.id)
       .single()
       .then(({ data }) => {
-        if (data) {
-          if (data.full_name) setName(data.full_name.split(" ")[0]);
-          setCredits(data.credits || 0);
-        }
+        if (data?.full_name) setName(data.full_name.split(" ")[0]);
       });
   }, [user]);
 
