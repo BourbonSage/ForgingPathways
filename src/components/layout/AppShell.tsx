@@ -9,6 +9,7 @@ import { Navigate } from "react-router-dom";
 
 export const AppShell = () => {
   const { user, loading, isPending, isAdmin, signOut } = useAuth();
+  const { credits } = useCredits();
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
