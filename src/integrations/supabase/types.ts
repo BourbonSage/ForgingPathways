@@ -83,6 +83,33 @@ export type Database = {
         }
         Relationships: []
       }
+      redemptions: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          reward_key: string
+          reward_title: string
+          user_id: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          id?: string
+          reward_key: string
+          reward_title: string
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          reward_key?: string
+          reward_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_claims: {
         Row: {
           claimed_at: string
