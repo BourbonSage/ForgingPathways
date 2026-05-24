@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Calendar } from "lucide-react";
 import { CreditBadge } from "@/components/CreditBadge";
+import { ProgressSummary } from "@/components/ProgressSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
 import { supabase } from "@/integrations/supabase/client";
+
 
 const Home = () => {
   const navigate = useNavigate();
