@@ -42,11 +42,14 @@ export const useProgressStats = () => {
     if (!user) return;
     supabase
       .from("task_claims")
-      .select("claimed_at")
+      .select("verified_at, status")
       .eq("user_id", user.id)
-      .order("claimed_at", { ascending: false })
+      .eq("status", "verified")
+      .order("verified_at", { ascending: false })
       .then(({ data }) => {
-        const dates = (data ?? []).map((r: any) => new Date(r.claimed_at));
+        const dates = (data ?? [])
+          .map((r: any) => (r.verified_at ? new Date(r.verified_at) : null))
+          .filter((d): d is Date => !!d);
         const ws = startOfWeek(new Date());
         setCompletedThisWeek(dates.filter((d) => d >= ws).length);
         setStreak(computeDayStreak(dates));
