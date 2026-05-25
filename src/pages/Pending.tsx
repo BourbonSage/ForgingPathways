@@ -104,7 +104,7 @@ const Pending = () => {
             onChange={(e) => syncCode(e.target.value)}
             className="font-mono tracking-widest text-center text-lg"
           />
-          <Button onClick={redeem} disabled={redeeming || code.length !== 6} className="gradient-primary">
+          <Button onClick={() => void redeem()} disabled={redeeming || code.length !== 6} className="gradient-primary">
             {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : "Redeem"}
           </Button>
         </div>
