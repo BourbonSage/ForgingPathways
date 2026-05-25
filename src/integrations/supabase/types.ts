@@ -50,6 +50,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pathway_credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          task_id: string | null
+          type: string
+          user_id: string
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          type: string
+          user_id: string
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          type?: string
+          user_id?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pathway_credit_transactions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pathway_credit_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -57,8 +108,11 @@ export type Database = {
           credits: number
           email: string | null
           full_name: string | null
+          housing_goals: string | null
           id: string
+          is_admin: boolean
           phone: string | null
+          skills: string[] | null
           updated_at: string
         }
         Insert: {
@@ -67,8 +121,11 @@ export type Database = {
           credits?: number
           email?: string | null
           full_name?: string | null
+          housing_goals?: string | null
           id: string
+          is_admin?: boolean
           phone?: string | null
+          skills?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -77,8 +134,11 @@ export type Database = {
           credits?: number
           email?: string | null
           full_name?: string | null
+          housing_goals?: string | null
           id?: string
+          is_admin?: boolean
           phone?: string | null
+          skills?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -88,24 +148,33 @@ export type Database = {
           cost: number
           created_at: string
           id: string
+          pathway_credits_used: number | null
           reward_key: string
+          reward_name: string | null
           reward_title: string
+          status: string
           user_id: string
         }
         Insert: {
           cost: number
           created_at?: string
           id?: string
+          pathway_credits_used?: number | null
           reward_key: string
+          reward_name?: string | null
           reward_title: string
+          status?: string
           user_id: string
         }
         Update: {
           cost?: number
           created_at?: string
           id?: string
+          pathway_credits_used?: number | null
           reward_key?: string
+          reward_name?: string | null
           reward_title?: string
+          status?: string
           user_id?: string
         }
         Relationships: []
@@ -152,9 +221,13 @@ export type Database = {
           credits: number
           description: string
           duration: string
+          est_hours: number | null
           id: string
           location: string
           org: string
+          partner: string
+          pathway_credits: number | null
+          status: string
           title: string
           updated_at: string
         }
@@ -164,9 +237,13 @@ export type Database = {
           credits?: number
           description: string
           duration?: string
+          est_hours?: number | null
           id?: string
           location?: string
           org?: string
+          partner?: string
+          pathway_credits?: number | null
+          status?: string
           title: string
           updated_at?: string
         }
@@ -176,9 +253,13 @@ export type Database = {
           credits?: number
           description?: string
           duration?: string
+          est_hours?: number | null
           id?: string
           location?: string
           org?: string
+          partner?: string
+          pathway_credits?: number | null
+          status?: string
           title?: string
           updated_at?: string
         }
@@ -204,6 +285,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          claimed_at: string
+          completed_at: string | null
+          id: string
+          task_id: string
+          user_id: string
+          verification_method: string | null
+          verified: boolean
+        }
+        Insert: {
+          claimed_at?: string
+          completed_at?: string | null
+          id?: string
+          task_id: string
+          user_id: string
+          verification_method?: string | null
+          verified?: boolean
+        }
+        Update: {
+          claimed_at?: string
+          completed_at?: string | null
+          id?: string
+          task_id?: string
+          user_id?: string
+          verification_method?: string | null
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
