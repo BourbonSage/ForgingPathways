@@ -1,16 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Hourglass, LogOut, RefreshCw } from "lucide-react";
+import { Hourglass, LogOut, RefreshCw, KeyRound, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Pending = () => {
   const { signOut, user, roles, refreshRoles, isPending } = useAuth();
   const navigate = useNavigate();
+  const [code, setCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
 
-  // Poll for role changes every 5s; redirect once approved
   useEffect(() => {
     if (!isPending) {
       navigate("/home", { replace: true });
@@ -21,6 +25,21 @@ const Pending = () => {
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, [isPending, roles, refreshRoles, navigate]);
+
+  const redeem = async () => {
+    if (code.length !== 6) return toast.error("Enter your 6-digit code");
+    setRedeeming(true);
+    const { data, error } = await supabase.rpc("redeem_passcode", { _code: code });
+    setRedeeming(false);
+    if (error) return toast.error(error.message);
+    const res = data as { ok: boolean; error?: string; role?: string };
+    if (!res?.ok) {
+      return toast.error(res?.error === "invalid_or_expired" ? "Code is invalid, expired, or not for this email." : "Could not redeem code.");
+    }
+    toast.success(`You're in as ${res.role}.`);
+    await refreshRoles();
+    navigate("/home", { replace: true });
+  };
 
   return (
     <div className="min-h-screen gradient-hero px-6 py-12 flex flex-col items-center justify-center text-center safe-top">
@@ -36,9 +55,33 @@ const Pending = () => {
       <p className="text-base text-muted-foreground max-w-sm leading-relaxed mb-2">
         Thanks for joining ForgingPathways. An admin will review your account shortly and grant you access.
       </p>
-      <p className="text-xs text-muted-foreground mb-8">{user?.email}</p>
+      <p className="text-xs text-muted-foreground mb-6">{user?.email}</p>
+
+      <div className="bg-card border border-border rounded-2xl p-4 max-w-sm w-full mb-6 shadow-soft">
+        <div className="flex items-center gap-2 mb-2 text-sm font-semibold text-foreground">
+          <KeyRound className="w-4 h-4 text-primary" /> Have an invite code?
+        </div>
+        <p className="text-xs text-muted-foreground mb-3 text-left">
+          Skip the wait — enter the 6-digit code your admin gave you.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            className="font-mono tracking-widest text-center text-lg"
+          />
+          <Button onClick={redeem} disabled={redeeming || code.length !== 6} className="gradient-primary">
+            {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : "Redeem"}
+          </Button>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2 items-center">
-        <Button onClick={() => refreshRoles()} className="gradient-primary">
+        <Button onClick={() => refreshRoles()} variant="outline">
           <RefreshCw className="w-4 h-4 mr-2" /> Check again
         </Button>
         <Button variant="ghost" onClick={signOut} className="text-muted-foreground">
