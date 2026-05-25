@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Hourglass, LogOut, RefreshCw, KeyRound, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -8,12 +8,18 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearStoredInviteCode, readStoredInviteCode, sanitizeInviteCode, writeStoredInviteCode } from "@/lib/invite-code";
 
 const Pending = () => {
   const { signOut, user, roles, refreshRoles, isPending } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const attemptedAutoRedeem = useRef(false);
+
+  useEffect(() => {
+    setCode(readStoredInviteCode());
+  }, []);
 
   useEffect(() => {
     if (!isPending) {
@@ -26,20 +32,44 @@ const Pending = () => {
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, [isPending, roles, refreshRoles, navigate]);
 
-  const redeem = async () => {
-    if (code.length !== 6) return toast.error("Enter your 6-digit code");
+  const syncCode = (value: string) => {
+    const next = sanitizeInviteCode(value);
+    setCode(next);
+    writeStoredInviteCode(next);
+  };
+
+  const redeem = async (value = code, silent = false) => {
+    if (value.length !== 6) {
+      if (!silent) toast.error("Enter your 6-digit code");
+      return false;
+    }
     setRedeeming(true);
-    const { data, error } = await supabase.rpc("redeem_passcode", { _code: code });
+    const { data, error } = await supabase.rpc("redeem_passcode", { _code: value });
     setRedeeming(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (!silent) toast.error(error.message);
+      return false;
+    }
     const res = data as { ok: boolean; error?: string; role?: string };
     if (!res?.ok) {
-      return toast.error(res?.error === "invalid_or_expired" ? "Code is invalid, expired, or not for this email." : "Could not redeem code.");
+      if (!silent) {
+        toast.error(res?.error === "invalid_or_expired" ? "Code is invalid, expired, or not for this email." : "Could not redeem code.");
+      }
+      return false;
     }
+    clearStoredInviteCode();
+    setCode("");
     toast.success(`You're in as ${res.role}.`);
     await refreshRoles();
     navigate("/home", { replace: true });
+    return true;
   };
+
+  useEffect(() => {
+    if (!isPending || attemptedAutoRedeem.current || code.length !== 6) return;
+    attemptedAutoRedeem.current = true;
+    void redeem(code, true);
+  }, [code, isPending]);
 
   return (
     <div className="min-h-screen gradient-hero px-6 py-12 flex flex-col items-center justify-center text-center safe-top">
@@ -71,7 +101,7 @@ const Pending = () => {
             maxLength={6}
             placeholder="123456"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => syncCode(e.target.value)}
             className="font-mono tracking-widest text-center text-lg"
           />
           <Button onClick={redeem} disabled={redeeming || code.length !== 6} className="gradient-primary">
