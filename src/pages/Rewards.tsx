@@ -55,15 +55,19 @@ const Rewards = () => {
       return;
     }
     setPending(r.key);
-    const { error } = await supabase.from("redemptions").insert({
+    const { error } = await supabase.from("pathway_credit_transactions").insert({
       user_id: user.id,
-      reward_key: r.key,
-      reward_title: r.title,
-      cost: r.cost,
+      type: "redeemed_reward",
+      amount: -r.cost,
+      description: `Redeemed: ${r.title}`,
     });
     setPending(null);
     if (error) {
-      toast.error(error.message.includes("Insufficient") ? "Not enough credits." : "Could not redeem. Try again.");
+      toast.error(
+        error.message.toLowerCase().includes("insufficient")
+          ? "Not enough credits."
+          : "Could not redeem. Try again."
+      );
       return;
     }
     await refresh();
