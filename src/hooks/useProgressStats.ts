@@ -20,7 +20,6 @@ const computeDayStreak = (dates: Date[]) => {
   const days = new Set(dates.map((d) => startOfDay(d).toISOString().slice(0, 10)));
   let streak = 0;
   const cursor = startOfDay(new Date());
-  // Allow streak to count from today OR yesterday (in case user hasn't acted yet today)
   if (!days.has(cursor.toISOString().slice(0, 10))) {
     cursor.setDate(cursor.getDate() - 1);
     if (!days.has(cursor.toISOString().slice(0, 10))) return 0;
@@ -41,14 +40,14 @@ export const useProgressStats = () => {
   useEffect(() => {
     if (!user) return;
     supabase
-      .from("task_claims")
-      .select("verified_at, status")
+      .from("user_tasks")
+      .select("completed_at, verified")
       .eq("user_id", user.id)
-      .eq("status", "verified")
-      .order("verified_at", { ascending: false })
+      .eq("verified", true)
+      .order("completed_at", { ascending: false })
       .then(({ data }) => {
         const dates = (data ?? [])
-          .map((r: any) => (r.verified_at ? new Date(r.verified_at) : null))
+          .map((r: any) => (r.completed_at ? new Date(r.completed_at) : null))
           .filter((d): d is Date => !!d);
         const ws = startOfWeek(new Date());
         setCompletedThisWeek(dates.filter((d) => d >= ws).length);
