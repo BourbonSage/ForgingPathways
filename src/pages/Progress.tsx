@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface ClaimRow {
   claimed_at: string;
-  tasks: { title: string; org: string; credits: number } | null;
+  task: { title: string; partner: string; org: string; pathway_credits: number | null; credits: number } | null;
 }
 
 // Monday-start week
@@ -52,15 +52,30 @@ const Progress = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("task_claims")
-      .select("claimed_at, tasks(title, org, credits)")
-      .eq("user_id", user.id)
-      .order("claimed_at", { ascending: false })
-      .then(({ data }) => {
-        setClaims((data as any) ?? []);
-        setLoading(false);
-      });
+    (async () => {
+      const { data: uts } = await supabase
+        .from("user_tasks")
+        .select("task_id, claimed_at")
+        .eq("user_id", user.id)
+        .order("claimed_at", { ascending: false });
+      const rows = (uts as any[]) ?? [];
+      const taskIds = Array.from(new Set(rows.map((r) => r.task_id)));
+      let tasksMap = new Map<string, any>();
+      if (taskIds.length > 0) {
+        const { data: ts } = await supabase
+          .from("tasks")
+          .select("id, title, partner, org, pathway_credits, credits")
+          .in("id", taskIds);
+        (ts ?? []).forEach((t: any) => tasksMap.set(t.id, t));
+      }
+      setClaims(
+        rows.map((r) => ({
+          claimed_at: r.claimed_at,
+          task: tasksMap.get(r.task_id) ?? null,
+        }))
+      );
+      setLoading(false);
+    })();
   }, [user]);
 
   const weekStart = startOfWeek(new Date());
