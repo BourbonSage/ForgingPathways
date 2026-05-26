@@ -3,15 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { QrCode, Camera, UserCheck, Check, Loader2 } from "lucide-react";
 
+type Method = "qr" | "photo" | "staff";
+
 interface VerifyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taskTitle: string;
   credits: number;
-  onVerified: () => Promise<void> | void;
+  onVerified: (method: Method) => Promise<void> | void;
 }
-
-type Method = "qr" | "photo" | "staff";
 
 export const VerifyDialog = ({ open, onOpenChange, taskTitle, credits, onVerified }: VerifyDialogProps) => {
   const [method, setMethod] = useState<Method | null>(null);
@@ -30,9 +30,10 @@ export const VerifyDialog = ({ open, onOpenChange, taskTitle, credits, onVerifie
   };
 
   const confirm = async () => {
+    if (!method) return;
     setSubmitting(true);
     try {
-      await onVerified();
+      await onVerified(method);
       setDone(true);
     } finally {
       setSubmitting(false);
