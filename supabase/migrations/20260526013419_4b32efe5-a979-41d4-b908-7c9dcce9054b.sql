@@ -1,0 +1,2 @@
+DELETE FROM public.user_roles WHERE user_id = (SELECT id FROM auth.users WHERE email='blanktest27@example.com') AND role='pending';
+INSERT INTO public.user_roles (user_id, role) SELECT id, 'participant' FROM auth.users WHERE email='blanktest27@example.com' ON CONFLICT DO NOTHING;
