@@ -14,11 +14,13 @@ export const useCredits = () => {
       return;
     }
     const { data } = await supabase
-      .from("profiles")
-      .select("credits")
-      .eq("id", user.id)
+      .from("pathway_credit_transactions")
+      .select("balance_after")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    setCredits(data?.credits ?? 0);
+    setCredits(data?.balance_after ?? 0);
     setLoading(false);
   }, [user]);
 
@@ -29,12 +31,19 @@ export const useCredits = () => {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`profiles-credits-${user.id}`)
+      .channel(`credit-txns-${user.id}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "pathway_credit_transactions",
+          filter: `user_id=eq.${user.id}`,
+        },
         (payload: any) => {
-          if (typeof payload.new?.credits === "number") setCredits(payload.new.credits);
+          if (typeof payload.new?.balance_after === "number") {
+            setCredits(payload.new.balance_after);
+          }
         }
       )
       .subscribe();
