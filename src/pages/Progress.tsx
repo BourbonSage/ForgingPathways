@@ -162,13 +162,13 @@ const Progress = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-foreground truncate">
-                    {a.tasks?.title ?? "Task"}
+                    {a.task?.title ?? "Task"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDay(a.claimed_at)} · {a.tasks?.org ?? ""}
+                    {formatDay(a.claimed_at)} · {a.task?.partner ?? a.task?.org ?? ""}
                   </p>
                 </div>
-                <CreditBadge amount={a.tasks?.credits ?? 0} size="sm" />
+                <CreditBadge amount={a.task?.pathway_credits ?? a.task?.credits ?? 0} size="sm" />
               </motion.li>
             ))}
           </ul>
