@@ -141,38 +141,21 @@ const CaseManagerQueue = () => {
 
   const approve = async (r: PendingRow) => {
     setBusy(r.id);
-    const nowIso = new Date().toISOString();
     const noteToSave = reviewRow?.id === r.id ? reviewNotes : r.notes;
-    const { error: updErr } = await supabase
-      .from("user_tasks")
-      .update({
-        verified: true,
-        status: "verified",
-        completed_at: r.completed_at ?? nowIso,
-        verification_method: r.verification_method ?? "staff",
-        notes: noteToSave,
-      })
-      .eq("id", r.id);
-    if (updErr) {
-      setBusy(null);
-      toast.error("Could not approve.");
+    // Save review notes first (allowed by RLS for case managers).
+    if (noteToSave !== r.notes) {
+      await supabase.from("user_tasks").update({ notes: noteToSave }).eq("id", r.id);
+    }
+    // Server-side: validates status, awards credits via ledger, sets verified.
+    const { error } = await supabase.rpc("award_credits_for_verified_task", {
+      p_user_task_id: r.id,
+    });
+    setBusy(null);
+    if (error) {
+      toast.error(error.message || "Could not approve.");
       return;
     }
-    const { error: txErr } = await supabase
-      .from("pathway_credit_transactions")
-      .insert({
-        user_id: r.user_id,
-        task_id: r.task_id,
-        type: "earned_task",
-        amount: r.credits,
-        description: `Verified by case manager: ${r.task_title}`,
-      });
-    setBusy(null);
-    if (txErr) {
-      toast.error("Approved, but credit award failed.");
-    } else {
-      toast.success(`Approved · +${r.credits} credits`);
-    }
+    toast.success(`Approved · +${r.credits} credits`);
     closeReview();
     setRows((prev) => prev.filter((x) => x.id !== r.id));
   };
@@ -181,12 +164,12 @@ const CaseManagerQueue = () => {
     if (!confirm("Reject this claim?")) return;
     setBusy(r.id);
     const noteToSave = reviewRow?.id === r.id ? reviewNotes : r.notes;
-    const { error } = await supabase
-      .from("user_tasks")
-      .update({ status: "rejected", notes: noteToSave })
-      .eq("id", r.id);
+    const { error } = await supabase.rpc("reject_user_task", {
+      p_user_task_id: r.id,
+      p_notes: noteToSave ?? "",
+    });
     setBusy(null);
-    if (error) return toast.error("Could not reject.");
+    if (error) return toast.error(error.message || "Could not reject.");
     toast.success("Marked as rejected");
     closeReview();
     setRows((prev) => prev.filter((x) => x.id !== r.id));
