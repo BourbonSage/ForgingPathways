@@ -119,36 +119,24 @@ const Tasks = () => {
     const { error: updateErr } = await supabase
       .from("user_tasks")
       .update({
-        verified: true,
         completed_at: nowIso,
         verification_method: method,
+        status: "pending_verification",
       })
       .eq("id", verifyDialog.userTaskId);
     if (updateErr) {
-      toast.error("Verification failed — please try again.");
+      toast.error("Submission failed — please try again.");
       throw updateErr;
-    }
-
-    const { error: txErr } = await supabase.from("pathway_credit_transactions").insert({
-      user_id: user.id,
-      task_id: verifyDialog.taskId,
-      type: "earned_task",
-      amount: verifyDialog.credits,
-      description: `Earned: ${verifyDialog.title}`,
-    });
-    if (txErr) {
-      toast.error("Credits could not be awarded — contact a partner.");
-      throw txErr;
     }
 
     setUserTasks((prev) =>
       prev.map((c) =>
         c.id === verifyDialog.userTaskId
-          ? { ...c, verified: true, completed_at: nowIso }
+          ? { ...c, completed_at: nowIso }
           : c
       )
     );
-    toast.success(`+${verifyDialog.credits} Pathway Credits earned!`);
+    toast.success("Submitted for case manager review");
   };
 
   return (
