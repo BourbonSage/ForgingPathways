@@ -13,44 +13,22 @@ export const useCredits = () => {
       setLoading(false);
       return;
     }
+    // Read the canonical balance from the user's profile. The ledger
+    // table is no longer broadcast over realtime (it contained sensitive
+    // transaction history), so callers explicitly refresh after RPC
+    // actions (redeem_reward, award_credits_for_verified_task).
     const { data } = await supabase
-      .from("pathway_credit_transactions")
-      .select("balance_after")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .from("profiles")
+      .select("credits")
+      .eq("id", user.id)
       .maybeSingle();
-    setCredits(data?.balance_after ?? 0);
+    setCredits(data?.credits ?? 0);
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel(`credit-txns-${user.id}-${Math.random().toString(36).slice(2)}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "pathway_credit_transactions",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload: any) => {
-          if (typeof payload.new?.balance_after === "number") {
-            setCredits(payload.new.balance_after);
-          }
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
 
   return { credits, loading, refresh };
 };
