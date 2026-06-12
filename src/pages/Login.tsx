@@ -17,6 +17,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
@@ -83,8 +84,13 @@ const Login = () => {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const effectiveEmail = verifyEmail.trim() || email;
+    if (!effectiveEmail) {
+      toast.error("Please enter your email address or request a new code.");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+    const { error } = await supabase.auth.verifyOtp({ email: effectiveEmail, token: otp, type: "email" });
     if (error) {
       setLoading(false);
       return toast.error(error.message);
@@ -223,12 +229,15 @@ const Login = () => {
             </form>
           </TabsContent>
 
-          <TabsContent value="otp" className="space-y-3 mt-0">
+          <TabsContent value="otp" className="space-y-4 mt-0">
             {!otpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-3">
-                <p className="text-sm text-muted-foreground">We'll email you a 6-digit code.</p>
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">Request a one-time code</h3>
+                  <p className="text-xs text-muted-foreground">We'll email you a 6-digit code to sign in.</p>
+                </div>
                 <div>
-                  <Label htmlFor="invite-code-otp">Invite code</Label>
+                  <Label htmlFor="invite-code-otp">Invite code <span className="font-normal text-muted-foreground">(optional)</span></Label>
                   <Input
                     id="invite-code-otp"
                     inputMode="numeric"
@@ -241,25 +250,49 @@ const Login = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email-otp">Email</Label>
-                  <Input id="email-otp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Label htmlFor="email-otp">Email address</Label>
+                  <Input id="email-otp" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full h-11 rounded-xl gradient-primary">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send code"}
                 </Button>
               </form>
             ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-3">
-                <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to {email}.</p>
-                <div>
-                  <Label htmlFor="otp">Code</Label>
-                  <Input id="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} required />
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="otp" className="text-sm font-semibold">Enter the one-time code you received</Label>
+                  <Input id="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} required placeholder="123456" className="font-mono tracking-[0.3em] text-center" />
                 </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-card px-2 text-muted-foreground font-medium">or</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="verify-email" className="text-sm">
+                    Email address
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Optional — only if it was included when your code was created</p>
+                  <Input
+                    id="verify-email"
+                    type="email"
+                    value={verifyEmail}
+                    onChange={(e) => setVerifyEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+
                 <Button type="submit" disabled={loading || otp.length !== 6} className="w-full h-11 rounded-xl gradient-primary">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & sign in"}
                 </Button>
-                <button type="button" onClick={() => { setOtpSent(false); setOtp(""); }} className="text-xs text-muted-foreground w-full text-center">
-                  Use a different email
+
+                <button type="button" onClick={() => { setOtpSent(false); setOtp(""); setVerifyEmail(""); }} className="text-xs text-muted-foreground w-full text-center hover:text-foreground transition-colors">
+                  Didn't get a code? Send a new one
                 </button>
               </form>
             )}
