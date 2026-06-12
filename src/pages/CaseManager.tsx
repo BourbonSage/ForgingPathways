@@ -225,7 +225,8 @@ const CaseManager = () => {
                 return (
                   <li
                     key={p.id}
-                    className="flex items-center gap-3 bg-muted/40 rounded-xl p-3"
+                    onClick={() => navigate(`/case-manager/participant/${p.id}`)}
+                    className="flex items-center gap-3 bg-muted/40 rounded-xl p-3 cursor-pointer hover:bg-muted/70 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">
