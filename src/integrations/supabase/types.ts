@@ -389,6 +389,26 @@ export type Database = {
         Returns: boolean
       }
       redeem_passcode: { Args: { _code: string }; Returns: Json }
+      redeem_reward: {
+        Args: { p_cost: number; p_title: string }
+        Returns: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          task_id: string | null
+          type: string
+          user_id: string
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pathway_credit_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reject_user_task: {
         Args: { p_notes: string; p_user_task_id: string }
         Returns: {
