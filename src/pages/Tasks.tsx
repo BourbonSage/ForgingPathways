@@ -114,21 +114,26 @@ const Tasks = () => {
 
   const handleVerify = async (method: "qr" | "photo" | "staff") => {
     if (!verifyDialog.userTaskId || !verifyDialog.taskId || !user) return;
-    const nowIso = new Date().toISOString();
 
-    const { error: updateErr } = await supabase
-      .from("user_tasks")
-      .update({
-        completed_at: nowIso,
-        verification_method: method,
-        status: "pending_verification",
-      })
-      .eq("id", verifyDialog.userTaskId);
-    if (updateErr) {
+    // Use the SECURITY DEFINER RPC so participants cannot self-verify.
+    // The RPC sets status='pending_verification' and completed_at server-side.
+    const { error } = await supabase.rpc("submit_task_for_verification", {
+      p_task_id: verifyDialog.taskId,
+    });
+    if (error) {
       toast.error("Submission failed — please try again.");
-      throw updateErr;
+      throw error;
     }
 
+    // Best-effort: record the verification_method chosen by the participant.
+    // RLS still allows the participant to update non-privileged columns on
+    // their own row; the trigger blocks verified/status='verified' changes.
+    await supabase
+      .from("user_tasks")
+      .update({ verification_method: method })
+      .eq("id", verifyDialog.userTaskId);
+
+    const nowIso = new Date().toISOString();
     setUserTasks((prev) =>
       prev.map((c) =>
         c.id === verifyDialog.userTaskId
