@@ -1,8 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, X, Loader2, ListChecks } from "lucide-react";
+import { ArrowLeft, Check, X, Loader2, ListChecks, Eye, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { CreditBadge } from "@/components/CreditBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,9 +25,12 @@ interface PendingRow {
   verified: boolean;
   claimed_at: string;
   completed_at: string | null;
+  verification_method: string | null;
+  notes: string | null;
   participant_name: string | null;
   participant_email: string | null;
   task_title: string;
+  task_description: string | null;
   credits: number;
 }
 
@@ -28,12 +40,14 @@ const CaseManagerQueue = () => {
   const [rows, setRows] = useState<PendingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [reviewRow, setReviewRow] = useState<PendingRow | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isPartner) navigate("/home", { replace: true });
   }, [authLoading, isPartner, navigate]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     const { data: profs } = await supabase
@@ -51,7 +65,9 @@ const CaseManagerQueue = () => {
 
     const { data: uts } = await supabase
       .from("user_tasks")
-      .select("id, user_id, task_id, status, verified, claimed_at, completed_at")
+      .select(
+        "id, user_id, task_id, status, verified, claimed_at, completed_at, verification_method, notes"
+      )
       .in("user_id", ids)
       .eq("verified", false)
       .order("completed_at", { ascending: false, nullsFirst: false });
@@ -62,7 +78,7 @@ const CaseManagerQueue = () => {
     if (taskIds.length > 0) {
       const { data: ts } = await supabase
         .from("tasks")
-        .select("id, title, pathway_credits, credits")
+        .select("id, title, description, pathway_credits, credits")
         .in("id", taskIds);
       (ts ?? []).forEach((t: any) => tMap.set(t.id, t));
     }
@@ -76,17 +92,33 @@ const CaseManagerQueue = () => {
           participant_name: p?.full_name ?? null,
           participant_email: p?.email ?? null,
           task_title: t?.title ?? "Task",
+          task_description: t?.description ?? null,
           credits: t?.pathway_credits ?? t?.credits ?? 0,
         } as PendingRow;
       })
     );
     setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
     if (isPartner && user) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPartner, user]);
+  }, [isPartner, user, load]);
+
+  // Realtime: refetch when any user_tasks row changes (RLS scopes to overseen participants).
+  useEffect(() => {
+    if (!isPartner || !user) return;
+    const channel = supabase
+      .channel(`cm-queue-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_tasks" },
+        () => load()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isPartner, user, load]);
 
   const pending = useMemo(
     () =>
@@ -96,16 +128,28 @@ const CaseManagerQueue = () => {
     [rows]
   );
 
+  const openReview = (r: PendingRow) => {
+    setReviewRow(r);
+    setReviewNotes(r.notes ?? "");
+  };
+
+  const closeReview = () => {
+    setReviewRow(null);
+    setReviewNotes("");
+  };
+
   const approve = async (r: PendingRow) => {
     setBusy(r.id);
     const nowIso = new Date().toISOString();
+    const noteToSave = reviewRow?.id === r.id ? reviewNotes : r.notes;
     const { error: updErr } = await supabase
       .from("user_tasks")
       .update({
         verified: true,
         status: "verified",
         completed_at: r.completed_at ?? nowIso,
-        verification_method: "staff",
+        verification_method: r.verification_method ?? "staff",
+        notes: noteToSave,
       })
       .eq("id", r.id);
     if (updErr) {
@@ -128,19 +172,22 @@ const CaseManagerQueue = () => {
     } else {
       toast.success(`Approved · +${r.credits} credits`);
     }
+    closeReview();
     setRows((prev) => prev.filter((x) => x.id !== r.id));
   };
 
   const reject = async (r: PendingRow) => {
     if (!confirm("Reject this claim?")) return;
     setBusy(r.id);
+    const noteToSave = reviewRow?.id === r.id ? reviewNotes : r.notes;
     const { error } = await supabase
       .from("user_tasks")
-      .update({ status: "rejected" })
+      .update({ status: "rejected", notes: noteToSave })
       .eq("id", r.id);
     setBusy(null);
     if (error) return toast.error("Could not reject.");
     toast.success("Marked as rejected");
+    closeReview();
     setRows((prev) => prev.filter((x) => x.id !== r.id));
   };
 
@@ -199,12 +246,32 @@ const CaseManagerQueue = () => {
                   </div>
                   <CreditBadge amount={r.credits} size="sm" />
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
-                  {r.completed_at
-                    ? `Completed ${new Date(r.completed_at).toLocaleString()}`
-                    : `Claimed ${new Date(r.claimed_at).toLocaleDateString()}`}
-                </p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3 flex-wrap">
+                  <span>
+                    {r.completed_at
+                      ? `Submitted ${new Date(r.completed_at).toLocaleString()}`
+                      : `Claimed ${new Date(r.claimed_at).toLocaleDateString()}`}
+                  </span>
+                  {r.verification_method && (
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] uppercase tracking-wide">
+                      {r.verification_method}
+                    </span>
+                  )}
+                </div>
+                {r.notes && (
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 rounded-xl p-3 mb-3">
+                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">{r.notes}</span>
+                  </div>
+                )}
                 <div className="flex gap-2">
+                  <Button
+                    onClick={() => openReview(r)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Eye className="w-4 h-4 mr-1" /> Review
+                  </Button>
                   <Button
                     onClick={() => approve(r)}
                     disabled={busy === r.id}
@@ -218,20 +285,94 @@ const CaseManagerQueue = () => {
                       </>
                     )}
                   </Button>
-                  <Button
-                    onClick={() => reject(r)}
-                    disabled={busy === r.id}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4 mr-1" /> Reject
-                  </Button>
                 </div>
               </motion.li>
             ))}
           </ul>
         )}
       </div>
+
+      <Dialog open={!!reviewRow} onOpenChange={(o) => !o && closeReview()}>
+        <DialogContent className="max-w-md rounded-3xl">
+          {reviewRow && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-2xl">
+                  {reviewRow.task_title}
+                </DialogTitle>
+                <DialogDescription>
+                  {reviewRow.participant_name || reviewRow.participant_email}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                {reviewRow.task_description && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {reviewRow.task_description}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-xl bg-muted/50 p-3">
+                    <p className="text-muted-foreground mb-0.5">Credits</p>
+                    <p className="font-semibold text-foreground">
+                      {reviewRow.credits}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-muted/50 p-3">
+                    <p className="text-muted-foreground mb-0.5">Method</p>
+                    <p className="font-semibold text-foreground capitalize">
+                      {reviewRow.verification_method ?? "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-muted/50 p-3 col-span-2">
+                    <p className="text-muted-foreground mb-0.5">Submitted</p>
+                    <p className="font-semibold text-foreground">
+                      {reviewRow.completed_at
+                        ? new Date(reviewRow.completed_at).toLocaleString()
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Review notes (optional)
+                  </label>
+                  <Textarea
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Add a note for this participant…"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => reject(reviewRow)}
+                  disabled={busy === reviewRow.id}
+                  className="flex-1"
+                >
+                  <X className="w-4 h-4 mr-1" /> Reject
+                </Button>
+                <Button
+                  onClick={() => approve(reviewRow)}
+                  disabled={busy === reviewRow.id}
+                  className="flex-1"
+                >
+                  {busy === reviewRow.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-1" /> Approve
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
