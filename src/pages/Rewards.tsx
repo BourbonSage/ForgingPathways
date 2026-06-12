@@ -55,16 +55,16 @@ const Rewards = () => {
       return;
     }
     setPending(r.key);
-    const { error } = await supabase.from("pathway_credit_transactions").insert({
-      user_id: user.id,
-      type: "redeemed_reward",
-      amount: -r.cost,
-      description: `Redeemed: ${r.title}`,
+    // Server-validated redemption — participants cannot insert ledger rows directly.
+    const { error } = await supabase.rpc("redeem_reward", {
+      p_cost: r.cost,
+      p_title: r.title,
     });
     setPending(null);
     if (error) {
+      const msg = (error.message || "").toLowerCase();
       toast.error(
-        error.message.toLowerCase().includes("insufficient")
+        msg.includes("insufficient")
           ? "Not enough credits."
           : "Could not redeem. Try again."
       );
