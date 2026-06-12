@@ -357,6 +357,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_credits_for_verified_task: {
+        Args: { p_user_task_id: string }
+        Returns: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          task_id: string | null
+          type: string
+          user_id: string
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pathway_credit_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -369,6 +389,50 @@ export type Database = {
         Returns: boolean
       }
       redeem_passcode: { Args: { _code: string }; Returns: Json }
+      reject_user_task: {
+        Args: { p_notes: string; p_user_task_id: string }
+        Returns: {
+          assigned_at: string | null
+          assigned_by: string | null
+          claimed_at: string
+          completed_at: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["user_task_status"]
+          task_id: string
+          user_id: string
+          verification_method: string | null
+          verified: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_task_for_verification: {
+        Args: { p_task_id: string }
+        Returns: {
+          assigned_at: string | null
+          assigned_by: string | null
+          claimed_at: string
+          completed_at: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["user_task_status"]
+          task_id: string
+          user_id: string
+          verification_method: string | null
+          verified: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_tasks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "partner" | "participant" | "pending"
