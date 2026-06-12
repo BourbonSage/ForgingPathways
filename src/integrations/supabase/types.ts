@@ -302,6 +302,7 @@ export type Database = {
           claimed_at: string
           completed_at: string | null
           id: string
+          notes: string | null
           status: Database["public"]["Enums"]["user_task_status"]
           task_id: string
           user_id: string
@@ -314,6 +315,7 @@ export type Database = {
           claimed_at?: string
           completed_at?: string | null
           id?: string
+          notes?: string | null
           status?: Database["public"]["Enums"]["user_task_status"]
           task_id: string
           user_id: string
@@ -326,6 +328,7 @@ export type Database = {
           claimed_at?: string
           completed_at?: string | null
           id?: string
+          notes?: string | null
           status?: Database["public"]["Enums"]["user_task_status"]
           task_id?: string
           user_id?: string
