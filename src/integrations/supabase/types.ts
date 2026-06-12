@@ -103,6 +103,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          case_manager_id: string | null
           city: string | null
           created_at: string
           credits: number
@@ -116,6 +117,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          case_manager_id?: string | null
           city?: string | null
           created_at?: string
           credits?: number
@@ -129,6 +131,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          case_manager_id?: string | null
           city?: string | null
           created_at?: string
           credits?: number
@@ -181,6 +184,8 @@ export type Database = {
       }
       task_claims: {
         Row: {
+          assigned_at: string | null
+          assigned_by: string | null
           claimed_at: string
           id: string
           status: Database["public"]["Enums"]["claim_status"]
@@ -189,6 +194,8 @@ export type Database = {
           verified_at: string | null
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
           claimed_at?: string
           id?: string
           status?: Database["public"]["Enums"]["claim_status"]
@@ -197,6 +204,8 @@ export type Database = {
           verified_at?: string | null
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
           claimed_at?: string
           id?: string
           status?: Database["public"]["Enums"]["claim_status"]
@@ -288,27 +297,36 @@ export type Database = {
       }
       user_tasks: {
         Row: {
+          assigned_at: string | null
+          assigned_by: string | null
           claimed_at: string
           completed_at: string | null
           id: string
+          status: Database["public"]["Enums"]["user_task_status"]
           task_id: string
           user_id: string
           verification_method: string | null
           verified: boolean
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
           claimed_at?: string
           completed_at?: string | null
           id?: string
+          status?: Database["public"]["Enums"]["user_task_status"]
           task_id: string
           user_id: string
           verification_method?: string | null
           verified?: boolean
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
           claimed_at?: string
           completed_at?: string | null
           id?: string
+          status?: Database["public"]["Enums"]["user_task_status"]
           task_id?: string
           user_id?: string
           verification_method?: string | null
@@ -343,11 +361,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_case_manager_of: {
+        Args: { _manager_id: string; _participant_id: string }
+        Returns: boolean
+      }
       redeem_passcode: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "partner" | "participant" | "pending"
       claim_status: "claimed" | "verified"
+      user_task_status:
+        | "claimed"
+        | "pending_verification"
+        | "verified"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -477,6 +504,12 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "partner", "participant", "pending"],
       claim_status: ["claimed", "verified"],
+      user_task_status: [
+        "claimed",
+        "pending_verification",
+        "verified",
+        "rejected",
+      ],
     },
   },
 } as const
