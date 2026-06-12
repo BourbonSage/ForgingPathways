@@ -27,6 +27,7 @@ interface PendingRow {
   completed_at: string | null;
   verification_method: string | null;
   notes: string | null;
+  assigned_by: string | null;
   participant_name: string | null;
   participant_email: string | null;
   task_title: string;
@@ -66,7 +67,7 @@ const CaseManagerQueue = () => {
     const { data: uts } = await supabase
       .from("user_tasks")
       .select(
-        "id, user_id, task_id, status, verified, claimed_at, completed_at, verification_method, notes"
+        "id, user_id, task_id, status, verified, claimed_at, completed_at, verification_method, notes, assigned_by"
       )
       .in("user_id", ids)
       .eq("verified", false)
@@ -255,6 +256,11 @@ const CaseManagerQueue = () => {
                   {r.verification_method && (
                     <span className="px-2 py-0.5 rounded-full bg-muted text-[10px] uppercase tracking-wide">
                       {r.verification_method}
+                    </span>
+                  )}
+                  {r.assigned_by && (
+                    <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] uppercase tracking-wide">
+                      Assigned
                     </span>
                   )}
                 </div>
