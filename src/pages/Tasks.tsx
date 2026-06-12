@@ -119,36 +119,24 @@ const Tasks = () => {
     const { error: updateErr } = await supabase
       .from("user_tasks")
       .update({
-        verified: true,
         completed_at: nowIso,
         verification_method: method,
+        status: "pending_verification",
       })
       .eq("id", verifyDialog.userTaskId);
     if (updateErr) {
-      toast.error("Verification failed — please try again.");
+      toast.error("Submission failed — please try again.");
       throw updateErr;
-    }
-
-    const { error: txErr } = await supabase.from("pathway_credit_transactions").insert({
-      user_id: user.id,
-      task_id: verifyDialog.taskId,
-      type: "earned_task",
-      amount: verifyDialog.credits,
-      description: `Earned: ${verifyDialog.title}`,
-    });
-    if (txErr) {
-      toast.error("Credits could not be awarded — contact a partner.");
-      throw txErr;
     }
 
     setUserTasks((prev) =>
       prev.map((c) =>
         c.id === verifyDialog.userTaskId
-          ? { ...c, verified: true, completed_at: nowIso }
+          ? { ...c, completed_at: nowIso }
           : c
       )
     );
-    toast.success(`+${verifyDialog.credits} Pathway Credits earned!`);
+    toast.success("Submitted for case manager review");
   };
 
   return (
@@ -172,7 +160,18 @@ const Tasks = () => {
               <ul className="space-y-3">
                 {myTasks.map(({ claim, task }) => {
                   const verified = claim.verified;
+                  const awaiting = !verified && !!claim.completed_at;
                   const credits = creditsFor(task);
+                  const pillClass = verified
+                    ? "bg-primary/15 text-primary"
+                    : awaiting
+                    ? "bg-secondary text-secondary-foreground"
+                    : "bg-accent/20 text-accent-foreground";
+                  const pillLabel = verified
+                    ? "Completed"
+                    : awaiting
+                    ? "Awaiting review"
+                    : "In progress";
                   return (
                     <li
                       key={claim.id}
@@ -181,13 +180,9 @@ const Tasks = () => {
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex-1 min-w-0">
                           <span
-                            className={`inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full mb-1.5 ${
-                              verified
-                                ? "bg-primary/15 text-primary"
-                                : "bg-accent/20 text-accent-foreground"
-                            }`}
+                            className={`inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full mb-1.5 ${pillClass}`}
                           >
-                            {verified ? "Completed" : "In progress"}
+                            {pillLabel}
                           </span>
                           <h3 className="font-display text-lg text-foreground leading-snug">
                             {task.title}
@@ -206,6 +201,10 @@ const Tasks = () => {
                       {verified ? (
                         <Button disabled variant="secondary" className="w-full">
                           <CheckCircle2 className="w-4 h-4" /> Completed
+                        </Button>
+                      ) : awaiting ? (
+                        <Button disabled variant="secondary" className="w-full">
+                          Awaiting case manager review
                         </Button>
                       ) : (
                         <Button
