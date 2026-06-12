@@ -4,11 +4,11 @@ import { Logo } from "@/components/Logo";
 import { CreditBadge } from "@/components/CreditBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
-import { ShieldCheck, LogOut } from "lucide-react";
+import { ShieldCheck, LogOut, Users } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 export const AppShell = () => {
-  const { user, loading, isPending, isAdmin, signOut } = useAuth();
+  const { user, loading, isPending, isAdmin, isPartner, signOut } = useAuth();
   const { credits } = useCredits();
 
   if (loading) return null;
@@ -25,6 +25,11 @@ export const AppShell = () => {
           <Link to="/rewards" title="Forge Credits balance">
             <CreditBadge amount={credits} size="sm" />
           </Link>
+          {isPartner && (
+            <Link to="/case-manager" className="p-2 rounded-lg hover:bg-muted text-primary" title="Case Manager">
+              <Users className="w-5 h-5" />
+            </Link>
+          )}
           {isAdmin && (
             <Link to="/admin" className="p-2 rounded-lg hover:bg-muted text-primary" title="Admin">
               <ShieldCheck className="w-5 h-5" />

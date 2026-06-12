@@ -14,6 +14,8 @@ import Tasks from "./pages/Tasks";
 import Progress from "./pages/Progress";
 import Rewards from "./pages/Rewards";
 import Admin from "./pages/Admin";
+import CaseManager from "./pages/CaseManager";
+import CaseManagerQueue from "./pages/CaseManagerQueue";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,8 @@ const App = () => (
               <Route path="/welcome" element={<Welcome />} />
               <Route path="/pending" element={<Pending />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/case-manager" element={<CaseManager />} />
+              <Route path="/case-manager/queue" element={<CaseManagerQueue />} />
               <Route element={<AppShell />}>
                 <Route path="/home" element={<Home />} />
                 <Route path="/tasks" element={<Tasks />} />
