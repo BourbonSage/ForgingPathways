@@ -84,8 +84,13 @@ const Login = () => {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const effectiveEmail = verifyEmail.trim() || email;
+    if (!effectiveEmail) {
+      toast.error("Please enter your email address or request a new code.");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+    const { error } = await supabase.auth.verifyOtp({ email: effectiveEmail, token: otp, type: "email" });
     if (error) {
       setLoading(false);
       return toast.error(error.message);
