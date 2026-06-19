@@ -367,6 +367,102 @@ const Admin = () => {
           </ul>
         </motion.section>
 
+        {/* Audit Log */}
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ScrollText className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-xl">Audit Log ({filteredAudit.length}{filteredAudit.length !== auditLog.length ? ` / ${auditLog.length}` : ""})</h2>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadAudit} disabled={auditLoading}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${auditLoading ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div>
+              <Label className="text-xs">Action</Label>
+              <Input value={auditAction} onChange={(e) => setAuditAction(e.target.value)} placeholder="e.g. assign_case_manager" />
+            </div>
+            <div>
+              <Label className="text-xs">Actor</Label>
+              <Select value={auditActor} onValueChange={setAuditActor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All actors</SelectItem>
+                  {actorOptions.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="border border-border rounded-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-40">When</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAudit.map((a) => {
+                  const entries = formatDetails(a.details);
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {new Date(a.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-xs">{userLabel(a.actor_id)}</TableCell>
+                      <TableCell className="text-xs">
+                        <span className="font-mono px-2 py-0.5 rounded bg-muted">{a.action}</span>
+                      </TableCell>
+                      <TableCell className="text-xs">{userLabel(a.target_user_id)}</TableCell>
+                      <TableCell className="text-xs">
+                        {entries ? (
+                          <ul className="space-y-0.5">
+                            {entries.map(([k, v]) => (
+                              <li key={k} className="leading-snug">
+                                <span className="text-muted-foreground">{k}:</span>{" "}
+                                <span className="font-mono break-all">
+                                  {typeof v === "string" ? v : JSON.stringify(v)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredAudit.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                      {auditLog.length === 0 ? "No audit entries yet." : "No entries match your filters."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </motion.section>
+
+
+
         <div className="text-center">
           <Logo maxWidth={120} />
         </div>
