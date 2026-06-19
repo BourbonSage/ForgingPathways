@@ -294,9 +294,15 @@ const Admin = () => {
     toast.success("Profile updated");
   };
 
-
+  const revokeUser = async (userId: string) => {
+    if (!confirm("Revoke all access for this user?")) return;
+    setBusy(true);
+    await supabase.from("user_roles").delete().eq("user_id", userId);
+    await load();
+    setBusy(false);
     toast.success("Access revoked");
   };
+
 
   const generateCode = async () => {
     setBusy(true);
