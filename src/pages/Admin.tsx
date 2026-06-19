@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil, KeyRound, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ const UNASSIGNED = "__none__";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleRow[]>([]);
   const [passcodes, setPasscodes] = useState<Passcode[]>([]);
@@ -294,6 +294,72 @@ const Admin = () => {
     toast.success("Profile updated");
   };
 
+  const [resetUser, setResetUser] = useState<UserRow | null>(null);
+  const [resetMode, setResetMode] = useState<"generate" | "custom">("generate");
+  const [resetCustomPassword, setResetCustomPassword] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetResultPassword, setResetResultPassword] = useState<string | null>(null);
+  const [resetCopied, setResetCopied] = useState(false);
+
+  const openReset = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) {
+      toast.error("Use the standard password change flow to reset your own password.");
+      return;
+    }
+    setResetUser(u);
+    setResetMode("generate");
+    setResetCustomPassword("");
+    setResetResultPassword(null);
+    setResetCopied(false);
+  };
+
+  const submitReset = async () => {
+    if (!resetUser) return;
+    if (resetMode === "custom") {
+      if (resetCustomPassword.length < 12) {
+        toast.error("Password must be at least 12 characters");
+        return;
+      }
+      if (resetCustomPassword.length > 128) {
+        toast.error("Password must be at most 128 characters");
+        return;
+      }
+    }
+    setResetBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-reset-password", {
+      body: {
+        user_id: resetUser.id,
+        ...(resetMode === "custom" ? { new_password: resetCustomPassword } : {}),
+      },
+    });
+    setResetBusy(false);
+    if (error) {
+      toast.error(error.message || "Reset failed");
+      return;
+    }
+    if (data?.error) {
+      toast.error(data.message || data.error);
+      return;
+    }
+    toast.success("Password reset");
+    if (data?.generated && data?.password) {
+      setResetResultPassword(data.password as string);
+    } else {
+      setResetUser(null);
+    }
+    await loadAudit();
+  };
+
+  const copyResetPassword = async () => {
+    if (!resetResultPassword) return;
+    await navigator.clipboard.writeText(resetResultPassword);
+    setResetCopied(true);
+    toast.success("Copied");
+    setTimeout(() => setResetCopied(false), 1500);
+  };
+
+
+
   const revokeUser = async (userId: string) => {
     if (!confirm("Revoke all access for this user?")) return;
     setBusy(true);
@@ -428,6 +494,14 @@ const Admin = () => {
                     </Select>
                     <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
                       <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openReset(u)}
+                      className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
+                      title={currentUser?.id === u.id ? "You cannot reset your own password here" : "Reset password"}
+                      disabled={currentUser?.id === u.id}
+                    >
+                      <KeyRound className="w-4 h-4" />
                     </button>
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
@@ -629,7 +703,99 @@ const Admin = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!resetUser}
+        onOpenChange={(o) => {
+          if (!o) {
+            setResetUser(null);
+            setResetResultPassword(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription className="truncate">
+              {resetUser?.email || resetUser?.full_name || "User"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetResultPassword ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Password reset successfully. Share this with the user securely — it will not be shown again.
+              </p>
+              <div className="flex items-center gap-2 bg-muted rounded-xl p-3">
+                <span className="font-mono text-sm break-all flex-1">{resetResultPassword}</span>
+                <button onClick={copyResetPassword} className="p-2 rounded-lg hover:bg-card shrink-0" title="Copy">
+                  {resetCopied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    setResetUser(null);
+                    setResetResultPassword(null);
+                  }}
+                  className="gradient-primary"
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={resetMode === "generate" ? "default" : "outline"}
+                  className={resetMode === "generate" ? "gradient-primary flex-1" : "flex-1"}
+                  onClick={() => setResetMode("generate")}
+                >
+                  Generate secure password
+                </Button>
+                <Button
+                  type="button"
+                  variant={resetMode === "custom" ? "default" : "outline"}
+                  className={resetMode === "custom" ? "gradient-primary flex-1" : "flex-1"}
+                  onClick={() => setResetMode("custom")}
+                >
+                  Set custom password
+                </Button>
+              </div>
+
+              {resetMode === "custom" && (
+                <div>
+                  <Label>New password</Label>
+                  <Input
+                    type="text"
+                    value={resetCustomPassword}
+                    maxLength={128}
+                    onChange={(e) => setResetCustomPassword(e.target.value)}
+                    placeholder="At least 12 characters"
+                  />
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                This will immediately replace the user's current password. The action is recorded in the audit log.
+              </p>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetUser(null)} disabled={resetBusy}>
+                  Cancel
+                </Button>
+                <Button onClick={submitReset} disabled={resetBusy} className="gradient-primary">
+                  {resetBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset password"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
