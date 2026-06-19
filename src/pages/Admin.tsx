@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
