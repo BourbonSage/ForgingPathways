@@ -426,6 +426,9 @@ const Admin = () => {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
+                    <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
                     </button>
