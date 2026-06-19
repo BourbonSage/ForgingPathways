@@ -543,6 +543,14 @@ const Admin = () => {
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={() => setDeleteUser(u)}
+                      className="p-2 hover:bg-card rounded-lg text-destructive disabled:opacity-40"
+                      title={removeReason(u)}
+                      disabled={!canRemove(u)}
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {isParticipant && (
