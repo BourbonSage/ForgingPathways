@@ -370,6 +370,42 @@ const Admin = () => {
     toast.success("Access revoked");
   };
 
+  const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const adminCount = useMemo(
+    () => new Set(allRoles.filter((r) => r.role === "admin").map((r) => r.user_id)).size,
+    [allRoles],
+  );
+
+  const canRemove = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) return false;
+    const rs = userRoles(u.id);
+    if (rs.includes("admin") && adminCount <= 1) return false;
+    return true;
+  };
+
+  const removeReason = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) return "You cannot remove your own account.";
+    const rs = userRoles(u.id);
+    if (rs.includes("admin") && adminCount <= 1) return "Cannot remove the last remaining admin.";
+    return "Remove account";
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteUser) return;
+    setDeleteBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { user_id: deleteUser.id },
+    });
+    setDeleteBusy(false);
+    if (error) { toast.error(error.message || "Removal failed"); return; }
+    if (data?.error) { toast.error(data.message || data.error); return; }
+    toast.success("Account removed");
+    setDeleteUser(null);
+    await load();
+  };
+
 
   const generateCode = async () => {
     setBusy(true);
