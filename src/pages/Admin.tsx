@@ -42,10 +42,28 @@ const Admin = () => {
   const [newCodeEmail, setNewCodeEmail] = useState("");
   const [newCodeRole, setNewCodeRole] = useState<AppRole>("participant");
   const [search, setSearch] = useState("");
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [auditAction, setAuditAction] = useState("");
+  const [auditActor, setAuditActor] = useState<string>("__all__");
+  const [auditFrom, setAuditFrom] = useState("");
+  const [auditTo, setAuditTo] = useState("");
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/home", { replace: true });
   }, [isAdmin, loading, navigate]);
+
+  const loadAudit = async () => {
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("admin_audit_log")
+      .select("id, created_at, actor_id, action, target_user_id, details")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setAuditLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setAuditLog((data ?? []) as AuditEntry[]);
+  };
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
@@ -56,6 +74,7 @@ const Admin = () => {
     if (profiles) setUsers(profiles as UserRow[]);
     if (roles) setAllRoles(roles as RoleRow[]);
     if (codes) setPasscodes(codes as Passcode[]);
+    await loadAudit();
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
