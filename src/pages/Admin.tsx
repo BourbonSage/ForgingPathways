@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
-interface UserRow { id: string; email: string | null; full_name: string | null; }
+interface UserRow {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  case_manager_id: string | null;
+  created_at: string;
+}
 interface RoleRow { id: string; user_id: string; role: AppRole; }
 interface Passcode { id: string; code: string; email: string | null; intended_role: AppRole; used_at: string | null; expires_at: string; }
+
+const UNASSIGNED = "__none__";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -24,6 +32,7 @@ const Admin = () => {
   const [busy, setBusy] = useState(false);
   const [newCodeEmail, setNewCodeEmail] = useState("");
   const [newCodeRole, setNewCodeRole] = useState<AppRole>("participant");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/home", { replace: true });
@@ -31,7 +40,7 @@ const Admin = () => {
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, full_name, case_manager_id, created_at").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
     ]);
@@ -42,12 +51,33 @@ const Admin = () => {
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
 
+  const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
+
+  const partners = useMemo(() => {
+    const partnerIds = new Set(allRoles.filter((r) => r.role === "partner" || r.role === "admin").map((r) => r.user_id));
+    return users.filter((u) => partnerIds.has(u.id));
+  }, [users, allRoles]);
+
+  const partnerLabel = (id: string | null) => {
+    if (!id) return "Unassigned";
+    const p = users.find((u) => u.id === id);
+    if (!p) return id.slice(0, 8);
+    return p.full_name || p.email || id.slice(0, 8);
+  };
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      (u.full_name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q)
+    );
+  }, [users, search]);
+
   const setRole = async (userId: string, role: AppRole) => {
     setBusy(true);
-    // remove pending; add new role if not present
     const existing = allRoles.filter((r) => r.user_id === userId);
     const hasRole = existing.some((r) => r.role === role);
-    // delete pending and other non-target if switching
     const toDelete = existing.filter((r) => r.role !== role);
     for (const r of toDelete) {
       await supabase.from("user_roles").delete().eq("id", r.id);
@@ -58,6 +88,42 @@ const Admin = () => {
     await load();
     setBusy(false);
     toast.success(`Role updated to ${role}`);
+  };
+
+  const assignCaseManager = async (participantId: string, value: string) => {
+    const newCm = value === UNASSIGNED ? null : value;
+    const participant = users.find((u) => u.id === participantId);
+    const oldCm = participant?.case_manager_id ?? null;
+    if (oldCm === newCm) return;
+
+    setBusy(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ case_manager_id: newCm })
+      .eq("id", participantId);
+
+    if (error) {
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
+
+    const { error: logErr } = await supabase.rpc("log_admin_action", {
+      p_action: "assign_case_manager",
+      p_target_user_id: participantId,
+      p_details: {
+        old_case_manager_id: oldCm,
+        new_case_manager_id: newCm,
+        old_case_manager_label: partnerLabel(oldCm),
+        new_case_manager_label: partnerLabel(newCm),
+        participant_email: participant?.email ?? null,
+      },
+    });
+    if (logErr) console.warn("audit log failed", logErr);
+
+    await load();
+    setBusy(false);
+    toast.success("Case manager updated");
   };
 
   const revokeUser = async (userId: string) => {
@@ -94,26 +160,24 @@ const Admin = () => {
     await load();
   };
 
-  const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
-
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="min-h-screen bg-background pb-10">
       <header className="px-5 pt-10 pb-4 safe-top bg-card border-b border-border">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+        <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <button onClick={() => navigate("/home")} className="p-2 -ml-2 rounded-lg hover:bg-muted">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <ShieldCheck className="w-6 h-6 text-primary" />
           <div>
             <h1 className="font-display text-2xl text-foreground leading-tight">Admin</h1>
-            <p className="text-xs text-muted-foreground">Manage roles & access</p>
+            <p className="text-xs text-muted-foreground">Manage roles, case managers & access</p>
           </div>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-5 pt-6 space-y-8">
+      <div className="max-w-3xl mx-auto px-5 pt-6 space-y-8">
         {/* Generate passcode */}
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
           <h2 className="font-display text-xl mb-3">Generate one-time passcode</h2>
@@ -157,33 +221,76 @@ const Admin = () => {
 
         {/* Users */}
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
-          <h2 className="font-display text-xl mb-3">Users ({users.length})</h2>
-          <ul className="space-y-2">
-            {users.map((u) => {
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <h2 className="font-display text-xl">Users ({filteredUsers.length}{search ? ` / ${users.length}` : ""})</h2>
+            <div className="relative flex-1 min-w-[180px] max-w-xs">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or email"
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <ul className="space-y-3">
+            {filteredUsers.map((u) => {
               const rs = userRoles(u.id);
               const current = rs.includes("admin") ? "admin" : rs.includes("partner") ? "partner" : rs.includes("participant") ? "participant" : "pending";
+              const isParticipant = rs.includes("participant");
               return (
-                <li key={u.id} className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{u.full_name || "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-primary mt-0.5">{rs.join(", ") || "no role"}</p>
+                <li key={u.id} className="bg-muted/40 rounded-xl p-3 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{u.full_name || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-primary mt-0.5">{rs.join(", ") || "no role"}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)} disabled={busy}>
+                      <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="participant">Participant</SelectItem>
+                        <SelectItem value="partner">Partner</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)}>
-                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="participant">Participant</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  {isParticipant && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                      <UserCog className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <Label className="text-xs text-muted-foreground shrink-0">Case manager:</Label>
+                      <Select
+                        value={u.case_manager_id ?? UNASSIGNED}
+                        onValueChange={(v) => assignCaseManager(u.id, v)}
+                        disabled={busy}
+                      >
+                        <SelectTrigger className="flex-1 h-8 text-xs">
+                          <SelectValue>{partnerLabel(u.case_manager_id)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                          {partners.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.full_name || p.email || p.id.slice(0, 8)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </li>
               );
             })}
+            {filteredUsers.length === 0 && (
+              <li className="text-center text-sm text-muted-foreground py-6">No users match your search.</li>
+            )}
           </ul>
         </motion.section>
 
