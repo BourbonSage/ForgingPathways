@@ -50,7 +50,7 @@ const UNASSIGNED = "__none__";
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleRow[]>([]);
   const [passcodes, setPasscodes] = useState<Passcode[]>([]);
