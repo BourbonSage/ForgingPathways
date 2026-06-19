@@ -495,6 +495,14 @@ const Admin = () => {
                     <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
                       <Pencil className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={() => openReset(u)}
+                      className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
+                      title={currentUser?.id === u.id ? "You cannot reset your own password here" : "Reset password"}
+                      disabled={currentUser?.id === u.id}
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </button>
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
                     </button>
