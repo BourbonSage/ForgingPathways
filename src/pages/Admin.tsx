@@ -294,6 +294,72 @@ const Admin = () => {
     toast.success("Profile updated");
   };
 
+  const [resetUser, setResetUser] = useState<UserRow | null>(null);
+  const [resetMode, setResetMode] = useState<"generate" | "custom">("generate");
+  const [resetCustomPassword, setResetCustomPassword] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetResultPassword, setResetResultPassword] = useState<string | null>(null);
+  const [resetCopied, setResetCopied] = useState(false);
+
+  const openReset = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) {
+      toast.error("Use the standard password change flow to reset your own password.");
+      return;
+    }
+    setResetUser(u);
+    setResetMode("generate");
+    setResetCustomPassword("");
+    setResetResultPassword(null);
+    setResetCopied(false);
+  };
+
+  const submitReset = async () => {
+    if (!resetUser) return;
+    if (resetMode === "custom") {
+      if (resetCustomPassword.length < 12) {
+        toast.error("Password must be at least 12 characters");
+        return;
+      }
+      if (resetCustomPassword.length > 128) {
+        toast.error("Password must be at most 128 characters");
+        return;
+      }
+    }
+    setResetBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-reset-password", {
+      body: {
+        user_id: resetUser.id,
+        ...(resetMode === "custom" ? { new_password: resetCustomPassword } : {}),
+      },
+    });
+    setResetBusy(false);
+    if (error) {
+      toast.error(error.message || "Reset failed");
+      return;
+    }
+    if (data?.error) {
+      toast.error(data.message || data.error);
+      return;
+    }
+    toast.success("Password reset");
+    if (data?.generated && data?.password) {
+      setResetResultPassword(data.password as string);
+    } else {
+      setResetUser(null);
+    }
+    await loadAudit();
+  };
+
+  const copyResetPassword = async () => {
+    if (!resetResultPassword) return;
+    await navigator.clipboard.writeText(resetResultPassword);
+    setResetCopied(true);
+    toast.success("Copied");
+    setTimeout(() => setResetCopied(false), 1500);
+  };
+
+
+
   const revokeUser = async (userId: string) => {
     if (!confirm("Revoke all access for this user?")) return;
     setBusy(true);
