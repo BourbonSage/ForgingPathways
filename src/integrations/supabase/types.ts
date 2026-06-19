@@ -137,6 +137,7 @@ export type Database = {
           city: string | null
           created_at: string
           credits: number
+          deleted_at: string | null
           email: string | null
           full_name: string | null
           housing_goals: string | null
@@ -151,6 +152,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           credits?: number
+          deleted_at?: string | null
           email?: string | null
           full_name?: string | null
           housing_goals?: string | null
@@ -165,6 +167,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           credits?: number
+          deleted_at?: string | null
           email?: string | null
           full_name?: string | null
           housing_goals?: string | null
