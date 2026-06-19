@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -20,6 +21,14 @@ interface UserRow {
 }
 interface RoleRow { id: string; user_id: string; role: AppRole; }
 interface Passcode { id: string; code: string; email: string | null; intended_role: AppRole; used_at: string | null; expires_at: string; }
+interface AuditEntry {
+  id: string;
+  created_at: string;
+  actor_id: string | null;
+  action: string;
+  target_user_id: string | null;
+  details: Record<string, any> | null;
+}
 
 const UNASSIGNED = "__none__";
 
@@ -33,10 +42,28 @@ const Admin = () => {
   const [newCodeEmail, setNewCodeEmail] = useState("");
   const [newCodeRole, setNewCodeRole] = useState<AppRole>("participant");
   const [search, setSearch] = useState("");
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [auditAction, setAuditAction] = useState("");
+  const [auditActor, setAuditActor] = useState<string>("__all__");
+  const [auditFrom, setAuditFrom] = useState("");
+  const [auditTo, setAuditTo] = useState("");
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/home", { replace: true });
   }, [isAdmin, loading, navigate]);
+
+  const loadAudit = async () => {
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("admin_audit_log")
+      .select("id, created_at, actor_id, action, target_user_id, details")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setAuditLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setAuditLog((data ?? []) as AuditEntry[]);
+  };
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
@@ -47,6 +74,7 @@ const Admin = () => {
     if (profiles) setUsers(profiles as UserRow[]);
     if (roles) setAllRoles(roles as RoleRow[]);
     if (codes) setPasscodes(codes as Passcode[]);
+    await loadAudit();
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
@@ -64,6 +92,51 @@ const Admin = () => {
     if (!p) return id.slice(0, 8);
     return p.full_name || p.email || id.slice(0, 8);
   };
+
+
+
+  const userLabel = (id: string | null) => {
+    if (!id) return "—";
+    const u = users.find((x) => x.id === id);
+    if (!u) return id.slice(0, 8);
+    return u.full_name || u.email || id.slice(0, 8);
+  };
+
+  const actorOptions = useMemo(() => {
+    const ids = Array.from(new Set(auditLog.map((a) => a.actor_id).filter(Boolean))) as string[];
+    return ids.map((id) => ({ id, label: userLabel(id) }));
+  }, [auditLog, users]);
+
+  const filteredAudit = useMemo(() => {
+    const q = auditAction.trim().toLowerCase();
+    const from = auditFrom ? new Date(auditFrom).getTime() : null;
+    const to = auditTo ? new Date(auditTo).getTime() + 24 * 60 * 60 * 1000 : null;
+    return auditLog.filter((a) => {
+      if (q && !a.action.toLowerCase().includes(q)) return false;
+      if (auditActor !== "__all__" && a.actor_id !== auditActor) return false;
+      const t = new Date(a.created_at).getTime();
+      if (from && t < from) return false;
+      if (to && t > to) return false;
+      return true;
+    });
+  }, [auditLog, auditAction, auditActor, auditFrom, auditTo]);
+
+  const formatDetails = (d: Record<string, any> | null) => {
+    if (!d || Object.keys(d).length === 0) return null;
+    const entries = Object.entries(d);
+    // Surface common old/new value pairings first
+    const priority = ["old_value", "new_value", "old_case_manager_label", "new_case_manager_label", "old_role", "new_role"];
+    entries.sort((a, b) => {
+      const ai = priority.indexOf(a[0]);
+      const bi = priority.indexOf(b[0]);
+      if (ai === -1 && bi === -1) return a[0].localeCompare(b[0]);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return entries;
+  };
+
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -293,6 +366,102 @@ const Admin = () => {
             )}
           </ul>
         </motion.section>
+
+        {/* Audit Log */}
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ScrollText className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-xl">Audit Log ({filteredAudit.length}{filteredAudit.length !== auditLog.length ? ` / ${auditLog.length}` : ""})</h2>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadAudit} disabled={auditLoading}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${auditLoading ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div>
+              <Label className="text-xs">Action</Label>
+              <Input value={auditAction} onChange={(e) => setAuditAction(e.target.value)} placeholder="e.g. assign_case_manager" />
+            </div>
+            <div>
+              <Label className="text-xs">Actor</Label>
+              <Select value={auditActor} onValueChange={setAuditActor}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All actors</SelectItem>
+                  {actorOptions.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">From</Label>
+              <Input type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs">To</Label>
+              <Input type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="border border-border rounded-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-40">When</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAudit.map((a) => {
+                  const entries = formatDetails(a.details);
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {new Date(a.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-xs">{userLabel(a.actor_id)}</TableCell>
+                      <TableCell className="text-xs">
+                        <span className="font-mono px-2 py-0.5 rounded bg-muted">{a.action}</span>
+                      </TableCell>
+                      <TableCell className="text-xs">{userLabel(a.target_user_id)}</TableCell>
+                      <TableCell className="text-xs">
+                        {entries ? (
+                          <ul className="space-y-0.5">
+                            {entries.map(([k, v]) => (
+                              <li key={k} className="leading-snug">
+                                <span className="text-muted-foreground">{k}:</span>{" "}
+                                <span className="font-mono break-all">
+                                  {typeof v === "string" ? v : JSON.stringify(v)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredAudit.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                      {auditLog.length === 0 ? "No audit entries yet." : "No entries match your filters."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </motion.section>
+
+
 
         <div className="text-center">
           <Logo maxWidth={120} />
