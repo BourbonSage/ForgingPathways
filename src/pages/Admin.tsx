@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -16,9 +19,22 @@ interface UserRow {
   id: string;
   email: string | null;
   full_name: string | null;
+  phone: string | null;
+  city: string | null;
+  housing_goals: string | null;
+  skills: string[] | null;
   case_manager_id: string | null;
   created_at: string;
 }
+
+interface EditForm {
+  full_name: string;
+  phone: string;
+  city: string;
+  housing_goals: string;
+  skills: string;
+}
+
 interface RoleRow { id: string; user_id: string; role: AppRole; }
 interface Passcode { id: string; code: string; email: string | null; intended_role: AppRole; used_at: string | null; expires_at: string; }
 interface AuditEntry {
@@ -67,7 +83,7 @@ const Admin = () => {
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, case_manager_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
     ]);
@@ -199,6 +215,85 @@ const Admin = () => {
     toast.success("Case manager updated");
   };
 
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", phone: "", city: "", housing_goals: "", skills: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const editProfileSchema = z.object({
+    full_name: z.string().trim().max(120, "Name must be 120 characters or fewer"),
+    phone: z.string().trim().max(40, "Phone must be 40 characters or fewer"),
+    city: z.string().trim().max(120, "City must be 120 characters or fewer"),
+    housing_goals: z.string().trim().max(2000, "Housing goals must be 2000 characters or fewer"),
+    skills: z.string().trim().max(500, "Skills must be 500 characters or fewer"),
+  });
+
+  const openEdit = (u: UserRow) => {
+    setEditingUser(u);
+    setEditForm({
+      full_name: u.full_name ?? "",
+      phone: u.phone ?? "",
+      city: u.city ?? "",
+      housing_goals: u.housing_goals ?? "",
+      skills: (u.skills ?? []).join(", "),
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingUser || !isAdmin) return;
+    const parsed = editProfileSchema.safeParse(editForm);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+    const v = parsed.data;
+    const newValues = {
+      full_name: v.full_name || null,
+      phone: v.phone || null,
+      city: v.city || null,
+      housing_goals: v.housing_goals || null,
+      skills: v.skills ? v.skills.split(",").map((s) => s.trim()).filter(Boolean) : null,
+    };
+    const oldValues = {
+      full_name: editingUser.full_name,
+      phone: editingUser.phone,
+      city: editingUser.city,
+      housing_goals: editingUser.housing_goals,
+      skills: editingUser.skills,
+    };
+    const changed = (Object.keys(newValues) as (keyof typeof newValues)[]).some(
+      (k) => JSON.stringify(newValues[k]) !== JSON.stringify(oldValues[k]),
+    );
+    if (!changed) {
+      toast.info("No changes to save");
+      setEditingUser(null);
+      return;
+    }
+
+    setEditSaving(true);
+    const { error } = await supabase.from("profiles").update(newValues).eq("id", editingUser.id);
+    if (error) {
+      setEditSaving(false);
+      toast.error(error.message);
+      return;
+    }
+
+    const { error: logErr } = await supabase.rpc("log_admin_action", {
+      p_action: "edit_profile",
+      p_target_user_id: editingUser.id,
+      p_details: {
+        old_values: oldValues,
+        new_values: newValues,
+        target_email: editingUser.email,
+      } as any,
+    });
+    if (logErr) console.warn("audit log failed", logErr);
+
+    setEditSaving(false);
+    setEditingUser(null);
+    await load();
+    toast.success("Profile updated");
+  };
+
   const revokeUser = async (userId: string) => {
     if (!confirm("Revoke all access for this user?")) return;
     setBusy(true);
@@ -207,6 +302,7 @@ const Admin = () => {
     setBusy(false);
     toast.success("Access revoked");
   };
+
 
   const generateCode = async () => {
     setBusy(true);
@@ -330,6 +426,9 @@ const Admin = () => {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
+                    <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -467,6 +566,69 @@ const Admin = () => {
           <Logo maxWidth={120} />
         </div>
       </div>
+
+      <Dialog open={!!editingUser} onOpenChange={(o) => !o && setEditingUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+            <DialogDescription className="truncate">
+              {editingUser?.email || editingUser?.full_name || "User"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Full name</Label>
+              <Input
+                value={editForm.full_name}
+                maxLength={120}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                value={editForm.phone}
+                maxLength={40}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>City</Label>
+              <Input
+                value={editForm.city}
+                maxLength={120}
+                onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Skills (comma separated)</Label>
+              <Input
+                value={editForm.skills}
+                maxLength={500}
+                onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })}
+                placeholder="carpentry, welding, ..."
+              />
+            </div>
+            <div>
+              <Label>Housing goals</Label>
+              <Textarea
+                value={editForm.housing_goals}
+                maxLength={2000}
+                rows={3}
+                onChange={(e) => setEditForm({ ...editForm, housing_goals: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={editSaving}>
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={editSaving} className="gradient-primary">
+              {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
