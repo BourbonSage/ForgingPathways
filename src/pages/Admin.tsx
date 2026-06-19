@@ -566,6 +566,69 @@ const Admin = () => {
           <Logo maxWidth={120} />
         </div>
       </div>
+
+      <Dialog open={!!editingUser} onOpenChange={(o) => !o && setEditingUser(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+            <DialogDescription className="truncate">
+              {editingUser?.email || editingUser?.full_name || "User"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Full name</Label>
+              <Input
+                value={editForm.full_name}
+                maxLength={120}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                value={editForm.phone}
+                maxLength={40}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>City</Label>
+              <Input
+                value={editForm.city}
+                maxLength={120}
+                onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Skills (comma separated)</Label>
+              <Input
+                value={editForm.skills}
+                maxLength={500}
+                onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })}
+                placeholder="carpentry, welding, ..."
+              />
+            </div>
+            <div>
+              <Label>Housing goals</Label>
+              <Textarea
+                value={editForm.housing_goals}
+                maxLength={2000}
+                rows={3}
+                onChange={(e) => setEditForm({ ...editForm, housing_goals: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={editSaving}>
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={editSaving} className="gradient-primary">
+              {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
