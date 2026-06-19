@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       one_time_passcodes: {
         Row: {
           code: string
@@ -387,6 +417,10 @@ export type Database = {
       is_case_manager_of: {
         Args: { _manager_id: string; _participant_id: string }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: { p_action: string; p_details?: Json; p_target_user_id?: string }
+        Returns: string
       }
       redeem_passcode: { Args: { _code: string }; Returns: Json }
       redeem_reward: {
