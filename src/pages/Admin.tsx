@@ -215,12 +215,86 @@ const Admin = () => {
     toast.success("Case manager updated");
   };
 
-  const revokeUser = async (userId: string) => {
-    if (!confirm("Revoke all access for this user?")) return;
-    setBusy(true);
-    await supabase.from("user_roles").delete().eq("user_id", userId);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ full_name: "", phone: "", city: "", housing_goals: "", skills: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const editProfileSchema = z.object({
+    full_name: z.string().trim().max(120, "Name must be 120 characters or fewer"),
+    phone: z.string().trim().max(40, "Phone must be 40 characters or fewer"),
+    city: z.string().trim().max(120, "City must be 120 characters or fewer"),
+    housing_goals: z.string().trim().max(2000, "Housing goals must be 2000 characters or fewer"),
+    skills: z.string().trim().max(500, "Skills must be 500 characters or fewer"),
+  });
+
+  const openEdit = (u: UserRow) => {
+    setEditingUser(u);
+    setEditForm({
+      full_name: u.full_name ?? "",
+      phone: u.phone ?? "",
+      city: u.city ?? "",
+      housing_goals: u.housing_goals ?? "",
+      skills: (u.skills ?? []).join(", "),
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingUser || !isAdmin) return;
+    const parsed = editProfileSchema.safeParse(editForm);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+    const v = parsed.data;
+    const newValues = {
+      full_name: v.full_name || null,
+      phone: v.phone || null,
+      city: v.city || null,
+      housing_goals: v.housing_goals || null,
+      skills: v.skills ? v.skills.split(",").map((s) => s.trim()).filter(Boolean) : null,
+    };
+    const oldValues = {
+      full_name: editingUser.full_name,
+      phone: editingUser.phone,
+      city: editingUser.city,
+      housing_goals: editingUser.housing_goals,
+      skills: editingUser.skills,
+    };
+    const changed = (Object.keys(newValues) as (keyof typeof newValues)[]).some(
+      (k) => JSON.stringify(newValues[k]) !== JSON.stringify(oldValues[k]),
+    );
+    if (!changed) {
+      toast.info("No changes to save");
+      setEditingUser(null);
+      return;
+    }
+
+    setEditSaving(true);
+    const { error } = await supabase.from("profiles").update(newValues).eq("id", editingUser.id);
+    if (error) {
+      setEditSaving(false);
+      toast.error(error.message);
+      return;
+    }
+
+    const { error: logErr } = await supabase.rpc("log_admin_action", {
+      p_action: "edit_profile",
+      p_target_user_id: editingUser.id,
+      p_details: {
+        old_values: oldValues,
+        new_values: newValues,
+        target_email: editingUser.email,
+      } as any,
+    });
+    if (logErr) console.warn("audit log failed", logErr);
+
+    setEditSaving(false);
+    setEditingUser(null);
     await load();
-    setBusy(false);
+    toast.success("Profile updated");
+  };
+
+
     toast.success("Access revoked");
   };
 
