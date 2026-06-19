@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil, KeyRound, Check } from "lucide-react";
+import { Plus, Trash2, Copy, ShieldCheck, Loader2, ArrowLeft, Search, UserCog, ScrollText, RefreshCw, Pencil, KeyRound, Check, UserX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +84,7 @@ const Admin = () => {
 
   const load = async () => {
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
     ]);
@@ -369,6 +370,42 @@ const Admin = () => {
     toast.success("Access revoked");
   };
 
+  const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const adminCount = useMemo(
+    () => new Set(allRoles.filter((r) => r.role === "admin").map((r) => r.user_id)).size,
+    [allRoles],
+  );
+
+  const canRemove = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) return false;
+    const rs = userRoles(u.id);
+    if (rs.includes("admin") && adminCount <= 1) return false;
+    return true;
+  };
+
+  const removeReason = (u: UserRow) => {
+    if (currentUser && u.id === currentUser.id) return "You cannot remove your own account.";
+    const rs = userRoles(u.id);
+    if (rs.includes("admin") && adminCount <= 1) return "Cannot remove the last remaining admin.";
+    return "Remove account";
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteUser) return;
+    setDeleteBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { user_id: deleteUser.id },
+    });
+    setDeleteBusy(false);
+    if (error) { toast.error(error.message || "Removal failed"); return; }
+    if (data?.error) { toast.error(data.message || data.error); return; }
+    toast.success("Account removed");
+    setDeleteUser(null);
+    await load();
+  };
+
 
   const generateCode = async () => {
     setBusy(true);
@@ -505,6 +542,14 @@ const Admin = () => {
                     </button>
                     <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
                       <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteUser(u)}
+                      className="p-2 hover:bg-card rounded-lg text-destructive disabled:opacity-40"
+                      title={removeReason(u)}
+                      disabled={!canRemove(u)}
+                    >
+                      <UserX className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -794,7 +839,29 @@ const Admin = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(o) => !o && !deleteBusy && setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will soft-delete <span className="font-semibold">{deleteUser?.full_name || deleteUser?.email || "this user"}</span>. They will be hidden from the user list and signed out / blocked from signing in. The action is recorded in the audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={deleteBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Remove account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
 
   );
 };
