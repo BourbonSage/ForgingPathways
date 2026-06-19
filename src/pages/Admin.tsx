@@ -703,7 +703,99 @@ const Admin = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!resetUser}
+        onOpenChange={(o) => {
+          if (!o) {
+            setResetUser(null);
+            setResetResultPassword(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription className="truncate">
+              {resetUser?.email || resetUser?.full_name || "User"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetResultPassword ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Password reset successfully. Share this with the user securely — it will not be shown again.
+              </p>
+              <div className="flex items-center gap-2 bg-muted rounded-xl p-3">
+                <span className="font-mono text-sm break-all flex-1">{resetResultPassword}</span>
+                <button onClick={copyResetPassword} className="p-2 rounded-lg hover:bg-card shrink-0" title="Copy">
+                  {resetCopied ? <Check className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    setResetUser(null);
+                    setResetResultPassword(null);
+                  }}
+                  className="gradient-primary"
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={resetMode === "generate" ? "default" : "outline"}
+                  className={resetMode === "generate" ? "gradient-primary flex-1" : "flex-1"}
+                  onClick={() => setResetMode("generate")}
+                >
+                  Generate secure password
+                </Button>
+                <Button
+                  type="button"
+                  variant={resetMode === "custom" ? "default" : "outline"}
+                  className={resetMode === "custom" ? "gradient-primary flex-1" : "flex-1"}
+                  onClick={() => setResetMode("custom")}
+                >
+                  Set custom password
+                </Button>
+              </div>
+
+              {resetMode === "custom" && (
+                <div>
+                  <Label>New password</Label>
+                  <Input
+                    type="text"
+                    value={resetCustomPassword}
+                    maxLength={128}
+                    onChange={(e) => setResetCustomPassword(e.target.value)}
+                    placeholder="At least 12 characters"
+                  />
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                This will immediately replace the user's current password. The action is recorded in the audit log.
+              </p>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetUser(null)} disabled={resetBusy}>
+                  Cancel
+                </Button>
+                <Button onClick={submitReset} disabled={resetBusy} className="gradient-primary">
+                  {resetBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset password"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
