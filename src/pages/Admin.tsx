@@ -91,6 +91,9 @@ const Admin = () => {
     const p = users.find((u) => u.id === id);
     if (!p) return id.slice(0, 8);
     return p.full_name || p.email || id.slice(0, 8);
+  };
+
+
 
   const userLabel = (id: string | null) => {
     if (!id) return "—";
