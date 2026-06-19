@@ -16,9 +16,22 @@ interface UserRow {
   id: string;
   email: string | null;
   full_name: string | null;
+  phone: string | null;
+  city: string | null;
+  housing_goals: string | null;
+  skills: string[] | null;
   case_manager_id: string | null;
   created_at: string;
 }
+
+interface EditForm {
+  full_name: string;
+  phone: string;
+  city: string;
+  housing_goals: string;
+  skills: string;
+}
+
 interface RoleRow { id: string; user_id: string; role: AppRole; }
 interface Passcode { id: string; code: string; email: string | null; intended_role: AppRole; used_at: string | null; expires_at: string; }
 interface AuditEntry {
