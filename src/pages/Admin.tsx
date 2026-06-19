@@ -91,7 +91,49 @@ const Admin = () => {
     const p = users.find((u) => u.id === id);
     if (!p) return id.slice(0, 8);
     return p.full_name || p.email || id.slice(0, 8);
+
+  const userLabel = (id: string | null) => {
+    if (!id) return "—";
+    const u = users.find((x) => x.id === id);
+    if (!u) return id.slice(0, 8);
+    return u.full_name || u.email || id.slice(0, 8);
   };
+
+  const actorOptions = useMemo(() => {
+    const ids = Array.from(new Set(auditLog.map((a) => a.actor_id).filter(Boolean))) as string[];
+    return ids.map((id) => ({ id, label: userLabel(id) }));
+  }, [auditLog, users]);
+
+  const filteredAudit = useMemo(() => {
+    const q = auditAction.trim().toLowerCase();
+    const from = auditFrom ? new Date(auditFrom).getTime() : null;
+    const to = auditTo ? new Date(auditTo).getTime() + 24 * 60 * 60 * 1000 : null;
+    return auditLog.filter((a) => {
+      if (q && !a.action.toLowerCase().includes(q)) return false;
+      if (auditActor !== "__all__" && a.actor_id !== auditActor) return false;
+      const t = new Date(a.created_at).getTime();
+      if (from && t < from) return false;
+      if (to && t > to) return false;
+      return true;
+    });
+  }, [auditLog, auditAction, auditActor, auditFrom, auditTo]);
+
+  const formatDetails = (d: Record<string, any> | null) => {
+    if (!d || Object.keys(d).length === 0) return null;
+    const entries = Object.entries(d);
+    // Surface common old/new value pairings first
+    const priority = ["old_value", "new_value", "old_case_manager_label", "new_case_manager_label", "old_role", "new_role"];
+    entries.sort((a, b) => {
+      const ai = priority.indexOf(a[0]);
+      const bi = priority.indexOf(b[0]);
+      if (ai === -1 && bi === -1) return a[0].localeCompare(b[0]);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+    return entries;
+  };
+
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
