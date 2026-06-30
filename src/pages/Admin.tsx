@@ -191,6 +191,18 @@ const Admin = () => {
   const assignCaseManager = async (participantId: string, value: string) => {
     const newCm = value === UNASSIGNED ? null : value;
     const participant = users.find((u) => u.id === participantId);
+    // Guard: never (re)assign on a deleted participant or to a deleted partner.
+    if (participant?.deleted_at) {
+      toast.error("This account is removed and cannot be assigned a case manager.");
+      return;
+    }
+    if (newCm) {
+      const partner = users.find((u) => u.id === newCm);
+      if (!partner || partner.deleted_at) {
+        toast.error("Selected partner is unavailable.");
+        return;
+      }
+    }
     const oldCm = participant?.case_manager_id ?? null;
     if (oldCm === newCm) return;
 
