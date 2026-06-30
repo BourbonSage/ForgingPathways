@@ -527,16 +527,33 @@ const Admin = () => {
               const rs = userRoles(u.id);
               const current = rs.includes("admin") ? "admin" : rs.includes("partner") ? "partner" : rs.includes("participant") ? "participant" : "pending";
               const isParticipant = rs.includes("participant");
+              const isDeleted = !!u.deleted_at;
+              const isSelf = currentUser?.id === u.id;
               return (
-                <li key={u.id} className="bg-muted/40 rounded-xl p-3 space-y-3">
+                <li key={u.id} className={`rounded-xl p-3 space-y-3 ${isDeleted ? "bg-muted/20 opacity-60" : "bg-muted/40"}`}>
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{u.full_name || "—"}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                      <p className="text-[10px] uppercase tracking-wide text-primary mt-0.5">{rs.join(", ") || "no role"}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+                      <p className={`font-semibold text-sm truncate ${isDeleted ? "line-through" : ""}`}>{u.full_name || "—"}</p>
+                      <p className={`text-xs text-muted-foreground truncate ${isDeleted ? "line-through" : ""}`}>{u.email}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-[10px] uppercase tracking-wide text-primary">{rs.join(", ") || "no role"}</p>
+                        {isDeleted && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-semibold">
+                            Deleted
+                          </span>
+                        )}
+                        {isSelf && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary font-semibold">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Joined {new Date(u.created_at).toLocaleDateString()}
+                        {isDeleted && u.deleted_at ? ` · Removed ${new Date(u.deleted_at).toLocaleDateString()}` : ""}
+                      </p>
                     </div>
-                    <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)} disabled={busy}>
+                    <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)} disabled={busy || isDeleted}>
                       <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -545,18 +562,34 @@ const Admin = () => {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
-                    <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
+                    <button
+                      onClick={() => openEdit(u)}
+                      className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
+                      title={isDeleted ? "Account is removed" : "Edit profile"}
+                      disabled={isDeleted}
+                    >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openReset(u)}
                       className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
-                      title={currentUser?.id === u.id ? "You cannot reset your own password here" : "Reset password"}
-                      disabled={currentUser?.id === u.id}
+                      title={
+                        isDeleted
+                          ? "Account is removed"
+                          : isSelf
+                            ? "You cannot reset your own password here — use the standard password change flow"
+                            : "Reset password"
+                      }
+                      disabled={isSelf || isDeleted}
                     >
                       <KeyRound className="w-4 h-4" />
                     </button>
-                    <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
+                    <button
+                      onClick={() => revokeUser(u.id)}
+                      className="p-2 hover:bg-card rounded-lg text-destructive disabled:opacity-40"
+                      title={isDeleted ? "Account is removed" : "Revoke all access"}
+                      disabled={isDeleted}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button
@@ -568,6 +601,7 @@ const Admin = () => {
                       <UserX className="w-4 h-4" />
                     </button>
                   </div>
+
 
                   {isParticipant && (
                     <div className="flex items-center gap-2 pt-2 border-t border-border/60">
