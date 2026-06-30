@@ -106,8 +106,9 @@ const Admin = () => {
   const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
 
   const partners = useMemo(() => {
+    // Only active (non-deleted) partners/admins can be assigned as case managers.
     const partnerIds = new Set(allRoles.filter((r) => r.role === "partner" || r.role === "admin").map((r) => r.user_id));
-    return users.filter((u) => partnerIds.has(u.id));
+    return users.filter((u) => partnerIds.has(u.id) && !u.deleted_at);
   }, [users, allRoles]);
 
   const partnerLabel = (id: string | null) => {
