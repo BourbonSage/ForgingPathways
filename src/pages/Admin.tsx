@@ -897,10 +897,29 @@ const Admin = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will soft-delete <span className="font-semibold">{deleteUser?.full_name || deleteUser?.email || "this user"}</span>. They will be hidden from the user list and signed out / blocked from signing in. The action is recorded in the audit log.
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  You are about to remove{" "}
+                  <span className="font-semibold text-foreground">
+                    {deleteUser?.full_name || "—"}
+                  </span>
+                  {deleteUser?.email ? (
+                    <> (<span className="font-mono text-foreground">{deleteUser.email}</span>)</>
+                  ) : null}
+                  .
+                </p>
+                <p>
+                  This is a soft delete: the account is hidden, the user is blocked from
+                  signing in, and their data is retained for audit. In practice this action
+                  is <span className="font-semibold text-destructive">irreversible</span> from
+                  this admin UI — re-enabling the account requires direct database access.
+                </p>
+                <p>The action is recorded in the audit log.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
