@@ -104,10 +104,12 @@ const ParticipantDetail = () => {
     if (!id) return;
     setLoading(true);
     const [{ data: p }, { data: ut }, { data: t }] = await Promise.all([
+      // Soft-deleted participants are treated as not found for partner views.
       supabase
         .from("profiles")
         .select("id, full_name, email, phone, city, credits, case_manager_id")
         .eq("id", id)
+        .is("deleted_at", null)
         .maybeSingle(),
       supabase
         .from("user_tasks")
