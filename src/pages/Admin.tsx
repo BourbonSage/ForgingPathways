@@ -86,8 +86,12 @@ const Admin = () => {
   };
 
   const load = async () => {
+    const profilesQuery = supabase
+      .from("profiles")
+      .select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at, deleted_at")
+      .order("created_at", { ascending: false });
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
+      showDeleted ? profilesQuery : profilesQuery.is("deleted_at", null),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
     ]);
@@ -97,7 +101,7 @@ const Admin = () => {
     await loadAudit();
   };
 
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin, showDeleted]);
 
   const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
 
