@@ -386,6 +386,7 @@ const Admin = () => {
   );
 
   const canRemove = (u: UserRow) => {
+    if (u.deleted_at) return false;
     if (currentUser && u.id === currentUser.id) return false;
     const rs = userRoles(u.id);
     if (rs.includes("admin") && adminCount <= 1) return false;
@@ -393,6 +394,7 @@ const Admin = () => {
   };
 
   const removeReason = (u: UserRow) => {
+    if (u.deleted_at) return "Account is already removed.";
     if (currentUser && u.id === currentUser.id) return "You cannot remove your own account.";
     const rs = userRoles(u.id);
     if (rs.includes("admin") && adminCount <= 1) return "Cannot remove the last remaining admin.";
