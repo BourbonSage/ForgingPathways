@@ -27,6 +27,7 @@ interface UserRow {
   skills: string[] | null;
   case_manager_id: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 interface EditForm {
