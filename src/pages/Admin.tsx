@@ -873,9 +873,12 @@ const Admin = () => {
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
-                This will immediately replace the user's current password. The action is recorded in the audit log.
-              </p>
+              <div className="text-xs text-muted-foreground space-y-1 rounded-lg bg-muted/60 p-3">
+                <p>This will immediately replace the user's current password.</p>
+                <p>Their existing sessions will be invalidated and they will be signed out on their next request.</p>
+                <p>The action is recorded in the audit log.</p>
+              </div>
+
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setResetUser(null)} disabled={resetBusy}>
