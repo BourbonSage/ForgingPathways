@@ -504,16 +504,23 @@ const Admin = () => {
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
           <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
             <h2 className="font-display text-xl">Users ({filteredUsers.length}{search ? ` / ${users.length}` : ""})</h2>
-            <div className="relative flex-1 min-w-[180px] max-w-xs">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or email"
-                className="pl-9"
-              />
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <Switch checked={showDeleted} onCheckedChange={setShowDeleted} />
+                Show deleted
+              </label>
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search name or email"
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
+
 
           <ul className="space-y-3">
             {filteredUsers.map((u) => {
