@@ -67,6 +67,7 @@ const Admin = () => {
   const [auditFrom, setAuditFrom] = useState("");
   const [auditTo, setAuditTo] = useState("");
   const [auditLoading, setAuditLoading] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/home", { replace: true });
