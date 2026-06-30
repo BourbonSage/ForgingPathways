@@ -47,10 +47,12 @@ const CaseManager = () => {
     if (!user || !isPartner) return;
     (async () => {
       setLoading(true);
+      // Exclude soft-deleted participants from the partner's roster.
       const { data: profs } = await supabase
         .from("profiles")
         .select("id, full_name, email, credits")
         .eq("case_manager_id", user.id)
+        .is("deleted_at", null)
         .order("full_name", { ascending: true });
       const list = (profs as ParticipantRow[]) ?? [];
       setParticipants(list);
