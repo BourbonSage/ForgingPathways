@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, AppRole } from "@/hooks/useAuth";
@@ -26,6 +27,7 @@ interface UserRow {
   skills: string[] | null;
   case_manager_id: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 interface EditForm {
@@ -65,6 +67,7 @@ const Admin = () => {
   const [auditFrom, setAuditFrom] = useState("");
   const [auditTo, setAuditTo] = useState("");
   const [auditLoading, setAuditLoading] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/home", { replace: true });
@@ -83,8 +86,12 @@ const Admin = () => {
   };
 
   const load = async () => {
+    const profilesQuery = supabase
+      .from("profiles")
+      .select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at, deleted_at")
+      .order("created_at", { ascending: false });
     const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
+      showDeleted ? profilesQuery : profilesQuery.is("deleted_at", null),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
     ]);
@@ -94,7 +101,7 @@ const Admin = () => {
     await loadAudit();
   };
 
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin, showDeleted]);
 
   const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
 
@@ -379,6 +386,7 @@ const Admin = () => {
   );
 
   const canRemove = (u: UserRow) => {
+    if (u.deleted_at) return false;
     if (currentUser && u.id === currentUser.id) return false;
     const rs = userRoles(u.id);
     if (rs.includes("admin") && adminCount <= 1) return false;
@@ -386,6 +394,7 @@ const Admin = () => {
   };
 
   const removeReason = (u: UserRow) => {
+    if (u.deleted_at) return "Account is already removed.";
     if (currentUser && u.id === currentUser.id) return "You cannot remove your own account.";
     const rs = userRoles(u.id);
     if (rs.includes("admin") && adminCount <= 1) return "Cannot remove the last remaining admin.";
@@ -495,32 +504,56 @@ const Admin = () => {
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-3xl p-5 border border-border shadow-soft">
           <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
             <h2 className="font-display text-xl">Users ({filteredUsers.length}{search ? ` / ${users.length}` : ""})</h2>
-            <div className="relative flex-1 min-w-[180px] max-w-xs">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or email"
-                className="pl-9"
-              />
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <Switch checked={showDeleted} onCheckedChange={setShowDeleted} />
+                Show deleted
+              </label>
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search name or email"
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
+
 
           <ul className="space-y-3">
             {filteredUsers.map((u) => {
               const rs = userRoles(u.id);
               const current = rs.includes("admin") ? "admin" : rs.includes("partner") ? "partner" : rs.includes("participant") ? "participant" : "pending";
               const isParticipant = rs.includes("participant");
+              const isDeleted = !!u.deleted_at;
+              const isSelf = currentUser?.id === u.id;
               return (
-                <li key={u.id} className="bg-muted/40 rounded-xl p-3 space-y-3">
+                <li key={u.id} className={`rounded-xl p-3 space-y-3 ${isDeleted ? "bg-muted/20 opacity-60" : "bg-muted/40"}`}>
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{u.full_name || "—"}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                      <p className="text-[10px] uppercase tracking-wide text-primary mt-0.5">{rs.join(", ") || "no role"}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Joined {new Date(u.created_at).toLocaleDateString()}</p>
+                      <p className={`font-semibold text-sm truncate ${isDeleted ? "line-through" : ""}`}>{u.full_name || "—"}</p>
+                      <p className={`text-xs text-muted-foreground truncate ${isDeleted ? "line-through" : ""}`}>{u.email}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-[10px] uppercase tracking-wide text-primary">{rs.join(", ") || "no role"}</p>
+                        {isDeleted && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-semibold">
+                            Deleted
+                          </span>
+                        )}
+                        {isSelf && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary font-semibold">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Joined {new Date(u.created_at).toLocaleDateString()}
+                        {isDeleted && u.deleted_at ? ` · Removed ${new Date(u.deleted_at).toLocaleDateString()}` : ""}
+                      </p>
                     </div>
-                    <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)} disabled={busy}>
+                    <Select value={current} onValueChange={(v) => setRole(u.id, v as AppRole)} disabled={busy || isDeleted}>
                       <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -529,18 +562,34 @@ const Admin = () => {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
-                    <button onClick={() => openEdit(u)} className="p-2 hover:bg-card rounded-lg" title="Edit profile">
+                    <button
+                      onClick={() => openEdit(u)}
+                      className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
+                      title={isDeleted ? "Account is removed" : "Edit profile"}
+                      disabled={isDeleted}
+                    >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openReset(u)}
                       className="p-2 hover:bg-card rounded-lg disabled:opacity-40"
-                      title={currentUser?.id === u.id ? "You cannot reset your own password here" : "Reset password"}
-                      disabled={currentUser?.id === u.id}
+                      title={
+                        isDeleted
+                          ? "Account is removed"
+                          : isSelf
+                            ? "You cannot reset your own password here — use the standard password change flow"
+                            : "Reset password"
+                      }
+                      disabled={isSelf || isDeleted}
                     >
                       <KeyRound className="w-4 h-4" />
                     </button>
-                    <button onClick={() => revokeUser(u.id)} className="p-2 hover:bg-card rounded-lg text-destructive" title="Revoke all access">
+                    <button
+                      onClick={() => revokeUser(u.id)}
+                      className="p-2 hover:bg-card rounded-lg text-destructive disabled:opacity-40"
+                      title={isDeleted ? "Account is removed" : "Revoke all access"}
+                      disabled={isDeleted}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button
@@ -552,6 +601,7 @@ const Admin = () => {
                       <UserX className="w-4 h-4" />
                     </button>
                   </div>
+
 
                   {isParticipant && (
                     <div className="flex items-center gap-2 pt-2 border-t border-border/60">
@@ -823,9 +873,12 @@ const Admin = () => {
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
-                This will immediately replace the user's current password. The action is recorded in the audit log.
-              </p>
+              <div className="text-xs text-muted-foreground space-y-1 rounded-lg bg-muted/60 p-3">
+                <p>This will immediately replace the user's current password.</p>
+                <p>Their existing sessions will be invalidated and they will be signed out on their next request.</p>
+                <p>The action is recorded in the audit log.</p>
+              </div>
+
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setResetUser(null)} disabled={resetBusy}>
@@ -844,10 +897,29 @@ const Admin = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will soft-delete <span className="font-semibold">{deleteUser?.full_name || deleteUser?.email || "this user"}</span>. They will be hidden from the user list and signed out / blocked from signing in. The action is recorded in the audit log.
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  You are about to remove{" "}
+                  <span className="font-semibold text-foreground">
+                    {deleteUser?.full_name || "—"}
+                  </span>
+                  {deleteUser?.email ? (
+                    <> (<span className="font-mono text-foreground">{deleteUser.email}</span>)</>
+                  ) : null}
+                  .
+                </p>
+                <p>
+                  This is a soft delete: the account is hidden, the user is blocked from
+                  signing in, and their data is retained for audit. In practice this action
+                  is <span className="font-semibold text-destructive">irreversible</span> from
+                  this admin UI — re-enabling the account requires direct database access.
+                </p>
+                <p>The action is recorded in the audit log.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
