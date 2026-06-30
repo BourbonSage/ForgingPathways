@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.log_admin_action(text, uuid, jsonb) FROM anon;
