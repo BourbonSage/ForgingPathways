@@ -106,8 +106,9 @@ const Admin = () => {
   const userRoles = (id: string) => allRoles.filter((r) => r.user_id === id).map((r) => r.role);
 
   const partners = useMemo(() => {
+    // Only active (non-deleted) partners/admins can be assigned as case managers.
     const partnerIds = new Set(allRoles.filter((r) => r.role === "partner" || r.role === "admin").map((r) => r.user_id));
-    return users.filter((u) => partnerIds.has(u.id));
+    return users.filter((u) => partnerIds.has(u.id) && !u.deleted_at);
   }, [users, allRoles]);
 
   const partnerLabel = (id: string | null) => {
@@ -190,6 +191,18 @@ const Admin = () => {
   const assignCaseManager = async (participantId: string, value: string) => {
     const newCm = value === UNASSIGNED ? null : value;
     const participant = users.find((u) => u.id === participantId);
+    // Guard: never (re)assign on a deleted participant or to a deleted partner.
+    if (participant?.deleted_at) {
+      toast.error("This account is removed and cannot be assigned a case manager.");
+      return;
+    }
+    if (newCm) {
+      const partner = users.find((u) => u.id === newCm);
+      if (!partner || partner.deleted_at) {
+        toast.error("Selected partner is unavailable.");
+        return;
+      }
+    }
     const oldCm = participant?.case_manager_id ?? null;
     if (oldCm === newCm) return;
 
@@ -610,7 +623,7 @@ const Admin = () => {
                       <Select
                         value={u.case_manager_id ?? UNASSIGNED}
                         onValueChange={(v) => assignCaseManager(u.id, v)}
-                        disabled={busy}
+                        disabled={busy || isDeleted}
                       >
                         <SelectTrigger className="flex-1 h-8 text-xs">
                           <SelectValue>{partnerLabel(u.case_manager_id)}</SelectValue>

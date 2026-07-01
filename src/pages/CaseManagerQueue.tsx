@@ -51,10 +51,12 @@ const CaseManagerQueue = () => {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    // Exclude soft-deleted participants from the verification queue.
     const { data: profs } = await supabase
       .from("profiles")
       .select("id, full_name, email")
-      .eq("case_manager_id", user.id);
+      .eq("case_manager_id", user.id)
+      .is("deleted_at", null);
     const list = (profs as any[]) ?? [];
     if (list.length === 0) {
       setRows([]);
