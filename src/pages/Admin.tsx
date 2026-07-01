@@ -623,7 +623,7 @@ const Admin = () => {
                       <Select
                         value={u.case_manager_id ?? UNASSIGNED}
                         onValueChange={(v) => assignCaseManager(u.id, v)}
-                        disabled={busy}
+                        disabled={busy || isDeleted}
                       >
                         <SelectTrigger className="flex-1 h-8 text-xs">
                           <SelectValue>{partnerLabel(u.case_manager_id)}</SelectValue>
