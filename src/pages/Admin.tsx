@@ -429,9 +429,17 @@ const Admin = () => {
   };
 
 
+  const generateSecureCode = () => {
+    // crypto.getRandomValues() provides cryptographically secure randomness
+    // unlike Math.random(), which is predictable and unsuitable for passcodes.
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return (arr[0] % 900000 + 100000).toString();
+  };
+
   const generateCode = async () => {
     setBusy(true);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = generateSecureCode();
     const { error } = await supabase.from("one_time_passcodes").insert({
       code,
       email: newCodeEmail || null,
