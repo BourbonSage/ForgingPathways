@@ -234,6 +234,12 @@ const Admin = () => {
         toast.error("Selected partner is unavailable.");
         return;
       }
+      // Org isolation: both parties must share an active organization.
+      if (!partnersFor(participantId).some((p) => p.id === newCm)) {
+        toast.error("That case manager is not in the same organization as this participant.");
+        return;
+      }
+
     }
     const oldCm = participant?.case_manager_id ?? null;
     if (oldCm === newCm) return;
