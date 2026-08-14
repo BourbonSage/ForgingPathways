@@ -638,11 +638,12 @@ const Admin = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                          {partners.map((p) => (
+                          {partnersFor(u.id).map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.full_name || p.email || p.id.slice(0, 8)}
                             </SelectItem>
                           ))}
+
                         </SelectContent>
                       </Select>
                     </div>
