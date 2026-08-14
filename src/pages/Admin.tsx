@@ -56,6 +56,8 @@ const Admin = () => {
   const { isAdmin, loading, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleRow[]>([]);
+  const [memberships, setMemberships] = useState<{ user_id: string; org_id: string }[]>([]);
+
   const [passcodes, setPasscodes] = useState<Passcode[]>([]);
   const [busy, setBusy] = useState(false);
   const [newCodeEmail, setNewCodeEmail] = useState("");
@@ -90,15 +92,22 @@ const Admin = () => {
       .from("profiles")
       .select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at, deleted_at")
       .order("created_at", { ascending: false });
-    const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { data: codes }, { data: orgMembers }] = await Promise.all([
       showDeleted ? profilesQuery : profilesQuery.is("deleted_at", null),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("org_memberships")
+        .select("user_id, org_id")
+        .is("deleted_at", null)
+        .eq("is_active", true),
     ]);
     if (profiles) setUsers(profiles as UserRow[]);
     if (roles) setAllRoles(roles as RoleRow[]);
     if (codes) setPasscodes(codes as Passcode[]);
+    if (orgMembers) setMemberships(orgMembers as { user_id: string; org_id: string }[]);
     await loadAudit();
+
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin, showDeleted]);
@@ -110,6 +119,29 @@ const Admin = () => {
     const partnerIds = new Set(allRoles.filter((r) => r.role === "partner" || r.role === "admin").map((r) => r.user_id));
     return users.filter((u) => partnerIds.has(u.id) && !u.deleted_at);
   }, [users, allRoles]);
+
+  // Org isolation: a case manager may only be assigned to a participant who
+  // shares one of their active organizations (enforced in the database too).
+  const orgsByUser = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const m of memberships) {
+      if (!map.has(m.user_id)) map.set(m.user_id, new Set());
+      map.get(m.user_id)!.add(m.org_id);
+    }
+    return map;
+  }, [memberships]);
+
+  const partnersFor = (participantId: string) => {
+    const participantOrgs = orgsByUser.get(participantId);
+    if (!participantOrgs || participantOrgs.size === 0) return [];
+    return partners.filter((p) => {
+      const orgs = orgsByUser.get(p.id);
+      if (!orgs) return false;
+      for (const o of orgs) if (participantOrgs.has(o)) return true;
+      return false;
+    });
+  };
+
 
   const partnerLabel = (id: string | null) => {
     if (!id) return "Unassigned";
@@ -202,6 +234,12 @@ const Admin = () => {
         toast.error("Selected partner is unavailable.");
         return;
       }
+      // Org isolation: both parties must share an active organization.
+      if (!partnersFor(participantId).some((p) => p.id === newCm)) {
+        toast.error("That case manager is not in the same organization as this participant.");
+        return;
+      }
+
     }
     const oldCm = participant?.case_manager_id ?? null;
     if (oldCm === newCm) return;
@@ -638,11 +676,12 @@ const Admin = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                          {partners.map((p) => (
+                          {partnersFor(u.id).map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.full_name || p.email || p.id.slice(0, 8)}
                             </SelectItem>
                           ))}
+
                         </SelectContent>
                       </Select>
                     </div>

@@ -562,6 +562,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      shares_org_with: {
+        Args: { _user_a: string; _user_b: string }
+        Returns: boolean
+      }
       submit_task_for_verification: {
         Args: { p_task_id: string }
         Returns: {
