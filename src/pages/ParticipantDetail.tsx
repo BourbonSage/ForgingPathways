@@ -87,23 +87,31 @@ const ParticipantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isPartner, loading: authLoading } = useAuth();
+  const { isOrgAdmin, loading: orgLoading } = useOrg();
+
+  // Authorized viewers: platform admins / partners (case managers) and
+  // org_admin / org_super. Row-level security still decides which single
+  // participant is actually returned, so a viewer outside the org sees
+  // "not found" even if they reach this route.
+  const canView = isPartner || isOrgAdmin;
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userTasks, setUserTasks] = useState<UserTask[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [assigning, setAssigning] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isPartner) navigate("/home", { replace: true });
-  }, [authLoading, isPartner, navigate]);
+    if (!authLoading && !orgLoading && !canView) navigate("/home", { replace: true });
+  }, [authLoading, orgLoading, canView, navigate]);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
-    const [{ data: p }, { data: ut }, { data: t }] = await Promise.all([
+    const [{ data: p }, { data: ut }, { data: t }, { data: tx }] = await Promise.all([
       // Soft-deleted participants are treated as not found for partner views.
       supabase
         .from("profiles")
@@ -125,16 +133,23 @@ const ParticipantDetail = () => {
         )
         .eq("active", true)
         .order("pathway_credits", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("pathway_credit_transactions")
+        .select("id, amount, type, description, balance_after, created_at, task_id")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false }),
     ]);
     setProfile((p as Profile) ?? null);
     setUserTasks(((ut as any) ?? []) as UserTask[]);
     setTasks(((t as any) ?? []) as Task[]);
+    setLedger(((tx as any) ?? []) as LedgerEntry[]);
     setLoading(false);
   }, [id]);
 
   useEffect(() => {
-    if (isPartner && id) load();
-  }, [isPartner, id, load]);
+    if (canView && id) load();
+  }, [canView, id, load]);
+
 
   const taskById = useMemo(() => {
     const m = new Map<string, Task>();
