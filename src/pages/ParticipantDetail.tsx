@@ -390,7 +390,51 @@ const ParticipantDetail = () => {
             </ul>
           )}
         </motion.section>
+
+        {/* Credit movements */}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-3xl p-5 border border-border shadow-soft"
+        >
+          <h2 className="font-display text-xl mb-3">Credit movements</h2>
+          {ledger.length === 0 ? (
+            <div className="rounded-2xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+              No credit activity yet.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {ledger.map((tx) => (
+                <li
+                  key={tx.id}
+                  className="flex items-center gap-3 bg-muted/40 rounded-xl p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground truncate">
+                      {tx.description ||
+                        (tx.task_id ? taskById.get(tx.task_id)?.title : null) ||
+                        tx.type.replace(/_/g, " ")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(tx.created_at).toLocaleString()} · balance{" "}
+                      {tx.balance_after}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-display text-sm font-semibold shrink-0 ${
+                      tx.amount >= 0 ? "text-primary" : "text-destructive"
+                    }`}
+                  >
+                    {tx.amount >= 0 ? "+" : ""}
+                    {tx.amount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </motion.section>
       </div>
+
 
       {/* Assign dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
