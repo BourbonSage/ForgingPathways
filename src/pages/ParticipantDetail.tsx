@@ -66,6 +66,17 @@ interface UserTask {
   assigned_by: string | null;
 }
 
+interface LedgerEntry {
+  id: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  balance_after: number;
+  created_at: string;
+  task_id: string | null;
+}
+
+
 const creditsFor = (t: Task) => t.pathway_credits ?? t.credits ?? 0;
 
 const startOfWeek = (d: Date) => {
