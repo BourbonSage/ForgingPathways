@@ -92,15 +92,22 @@ const Admin = () => {
       .from("profiles")
       .select("id, email, full_name, phone, city, housing_goals, skills, case_manager_id, created_at, deleted_at")
       .order("created_at", { ascending: false });
-    const [{ data: profiles }, { data: roles }, { data: codes }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { data: codes }, { data: orgMembers }] = await Promise.all([
       showDeleted ? profilesQuery : profilesQuery.is("deleted_at", null),
       supabase.from("user_roles").select("id, user_id, role"),
       supabase.from("one_time_passcodes").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("org_memberships")
+        .select("user_id, org_id")
+        .is("deleted_at", null)
+        .eq("is_active", true),
     ]);
     if (profiles) setUsers(profiles as UserRow[]);
     if (roles) setAllRoles(roles as RoleRow[]);
     if (codes) setPasscodes(codes as Passcode[]);
+    if (orgMembers) setMemberships(orgMembers as { user_id: string; org_id: string }[]);
     await loadAudit();
+
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin, showDeleted]);
