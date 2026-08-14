@@ -4,12 +4,14 @@ import { Logo } from "@/components/Logo";
 import { CreditBadge } from "@/components/CreditBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
-import { ShieldCheck, LogOut, Users } from "lucide-react";
+import { ShieldCheck, LogOut, Users, BarChart3 } from "lucide-react";
+import { useOrg } from "@/hooks/useOrg";
 import { Navigate } from "react-router-dom";
 
 export const AppShell = () => {
   const { user, loading, isPending, isAdmin, isPartner, signOut } = useAuth();
   const { credits } = useCredits();
+  const { isOrgAdmin } = useOrg();
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
@@ -28,6 +30,11 @@ export const AppShell = () => {
           {isPartner && (
             <Link to="/case-manager" className="p-2 rounded-lg hover:bg-muted text-primary" title="Case Manager">
               <Users className="w-5 h-5" />
+            </Link>
+          )}
+          {(isOrgAdmin || isAdmin) && (
+            <Link to="/org/workload" className="p-2 rounded-lg hover:bg-muted text-primary" title="Organization workload">
+              <BarChart3 className="w-5 h-5" />
             </Link>
           )}
           {isAdmin && (
