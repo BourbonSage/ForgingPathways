@@ -488,6 +488,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_case_manager_clients: {
+        Args: { p_days?: number; p_manager_id: string }
+        Returns: {
+          claims: number
+          client_id: string
+          credits: number
+          credits_moved: number
+          email: string
+          full_name: string
+          last_activity: string
+          pending_verifications: number
+          verifications: number
+        }[]
+      }
+      get_org_workload: {
+        Args: { p_days?: number; p_org_id: string }
+        Returns: {
+          active_clients: number
+          case_manager_id: string
+          credits_earned: number
+          email: string
+          full_name: string
+          org_role: Database["public"]["Enums"]["org_role"]
+          pending_verifications: number
+          total_clients: number
+        }[]
+      }
       has_org_role: {
         Args: {
           _org_id: string
