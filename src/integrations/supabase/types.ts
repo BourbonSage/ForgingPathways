@@ -80,6 +80,84 @@ export type Database = {
         }
         Relationships: []
       }
+      org_memberships: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          org_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          org_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_memberships_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          id: string
+          name: string
+          slug: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          slug?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pathway_credit_transactions: {
         Row: {
           amount: number
@@ -410,6 +488,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      has_org_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["org_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -419,6 +505,14 @@ export type Database = {
       }
       is_case_manager_of: {
         Args: { _manager_id: string; _participant_id: string }
+        Returns: boolean
+      }
+      is_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       log_admin_action: {
@@ -490,10 +584,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      user_org_ids: { Args: { _user_id: string }; Returns: string[] }
+      user_org_role: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["org_role"]
+      }
     }
     Enums: {
       app_role: "admin" | "partner" | "participant" | "pending"
       claim_status: "claimed" | "verified"
+      org_role: "org_admin" | "org_super" | "case_manager" | "participant"
       user_task_status:
         | "claimed"
         | "pending_verification"
@@ -628,6 +728,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "partner", "participant", "pending"],
       claim_status: ["claimed", "verified"],
+      org_role: ["org_admin", "org_super", "case_manager", "participant"],
       user_task_status: [
         "claimed",
         "pending_verification",
