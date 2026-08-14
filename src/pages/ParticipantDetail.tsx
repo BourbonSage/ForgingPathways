@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrg } from "@/hooks/useOrg";
+
 import { toast } from "sonner";
 
 interface Profile {
@@ -64,6 +66,17 @@ interface UserTask {
   assigned_by: string | null;
 }
 
+interface LedgerEntry {
+  id: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  balance_after: number;
+  created_at: string;
+  task_id: string | null;
+}
+
+
 const creditsFor = (t: Task) => t.pathway_credits ?? t.credits ?? 0;
 
 const startOfWeek = (d: Date) => {
@@ -87,23 +100,31 @@ const ParticipantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isPartner, loading: authLoading } = useAuth();
+  const { isOrgAdmin, loading: orgLoading } = useOrg();
+
+  // Authorized viewers: platform admins / partners (case managers) and
+  // org_admin / org_super. Row-level security still decides which single
+  // participant is actually returned, so a viewer outside the org sees
+  // "not found" even if they reach this route.
+  const canView = isPartner || isOrgAdmin;
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userTasks, setUserTasks] = useState<UserTask[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [assigning, setAssigning] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !isPartner) navigate("/home", { replace: true });
-  }, [authLoading, isPartner, navigate]);
+    if (!authLoading && !orgLoading && !canView) navigate("/home", { replace: true });
+  }, [authLoading, orgLoading, canView, navigate]);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
-    const [{ data: p }, { data: ut }, { data: t }] = await Promise.all([
+    const [{ data: p }, { data: ut }, { data: t }, { data: tx }] = await Promise.all([
       // Soft-deleted participants are treated as not found for partner views.
       supabase
         .from("profiles")
@@ -125,16 +146,23 @@ const ParticipantDetail = () => {
         )
         .eq("active", true)
         .order("pathway_credits", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("pathway_credit_transactions")
+        .select("id, amount, type, description, balance_after, created_at, task_id")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false }),
     ]);
     setProfile((p as Profile) ?? null);
     setUserTasks(((ut as any) ?? []) as UserTask[]);
     setTasks(((t as any) ?? []) as Task[]);
+    setLedger(((tx as any) ?? []) as LedgerEntry[]);
     setLoading(false);
   }, [id]);
 
   useEffect(() => {
-    if (isPartner && id) load();
-  }, [isPartner, id, load]);
+    if (canView && id) load();
+  }, [canView, id, load]);
+
 
   const taskById = useMemo(() => {
     const m = new Map<string, Task>();
@@ -362,7 +390,51 @@ const ParticipantDetail = () => {
             </ul>
           )}
         </motion.section>
+
+        {/* Credit movements */}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-3xl p-5 border border-border shadow-soft"
+        >
+          <h2 className="font-display text-xl mb-3">Credit movements</h2>
+          {ledger.length === 0 ? (
+            <div className="rounded-2xl bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+              No credit activity yet.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {ledger.map((tx) => (
+                <li
+                  key={tx.id}
+                  className="flex items-center gap-3 bg-muted/40 rounded-xl p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground truncate">
+                      {tx.description ||
+                        (tx.task_id ? taskById.get(tx.task_id)?.title : null) ||
+                        tx.type.replace(/_/g, " ")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(tx.created_at).toLocaleString()} · balance{" "}
+                      {tx.balance_after}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-display text-sm font-semibold shrink-0 ${
+                      tx.amount >= 0 ? "text-primary" : "text-destructive"
+                    }`}
+                  >
+                    {tx.amount >= 0 ? "+" : ""}
+                    {tx.amount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </motion.section>
       </div>
+
 
       {/* Assign dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

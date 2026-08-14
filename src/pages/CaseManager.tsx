@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Users, ClipboardCheck, CheckCircle2, Loader2, ArrowLeft, ListChecks } from "lucide-react";
+import { Users, ClipboardCheck, CheckCircle2, Loader2, ArrowLeft, ListChecks, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditBadge } from "@/components/CreditBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -191,11 +191,20 @@ const CaseManager = () => {
               {stats.pending} claim{stats.pending === 1 ? "" : "s"} awaiting review
             </p>
           </div>
-          <Button asChild className="shrink-0">
-            <Link to="/case-manager/queue">
-              <ListChecks className="w-4 h-4 mr-1" /> Open
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2 shrink-0">
+            <Button asChild>
+              <Link to="/case-manager/queue">
+                <ListChecks className="w-4 h-4 mr-1" /> Open
+              </Link>
+            </Button>
+            {user && (
+              <Button asChild variant="outline">
+                <Link to={`/org/case-manager/${user.id}`}>
+                  <BarChart3 className="w-4 h-4 mr-1" /> Activity
+                </Link>
+              </Button>
+            )}
+          </div>
         </motion.section>
 
         {/* Participants */}

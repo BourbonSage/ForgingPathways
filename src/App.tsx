@@ -17,6 +17,8 @@ import Admin from "./pages/Admin";
 import CaseManager from "./pages/CaseManager";
 import CaseManagerQueue from "./pages/CaseManagerQueue";
 import ParticipantDetail from "./pages/ParticipantDetail";
+import OrgWorkload from "./pages/OrgWorkload";
+import CaseManagerClients from "./pages/CaseManagerClients";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/case-manager" element={<CaseManager />} />
               <Route path="/case-manager/queue" element={<CaseManagerQueue />} />
               <Route path="/case-manager/participant/:id" element={<ParticipantDetail />} />
+              <Route path="/org/workload" element={<OrgWorkload />} />
+              <Route path="/org/case-manager/:managerId" element={<CaseManagerClients />} />
               <Route element={<AppShell />}>
                 <Route path="/home" element={<Home />} />
                 <Route path="/tasks" element={<Tasks />} />
