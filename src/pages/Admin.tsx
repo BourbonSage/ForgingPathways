@@ -56,6 +56,8 @@ const Admin = () => {
   const { isAdmin, loading, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleRow[]>([]);
+  const [memberships, setMemberships] = useState<{ user_id: string; org_id: string }[]>([]);
+
   const [passcodes, setPasscodes] = useState<Passcode[]>([]);
   const [busy, setBusy] = useState(false);
   const [newCodeEmail, setNewCodeEmail] = useState("");
