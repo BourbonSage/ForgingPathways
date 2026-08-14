@@ -111,6 +111,29 @@ const Admin = () => {
     return users.filter((u) => partnerIds.has(u.id) && !u.deleted_at);
   }, [users, allRoles]);
 
+  // Org isolation: a case manager may only be assigned to a participant who
+  // shares one of their active organizations (enforced in the database too).
+  const orgsByUser = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const m of memberships) {
+      if (!map.has(m.user_id)) map.set(m.user_id, new Set());
+      map.get(m.user_id)!.add(m.org_id);
+    }
+    return map;
+  }, [memberships]);
+
+  const partnersFor = (participantId: string) => {
+    const participantOrgs = orgsByUser.get(participantId);
+    if (!participantOrgs || participantOrgs.size === 0) return [];
+    return partners.filter((p) => {
+      const orgs = orgsByUser.get(p.id);
+      if (!orgs) return false;
+      for (const o of orgs) if (participantOrgs.has(o)) return true;
+      return false;
+    });
+  };
+
+
   const partnerLabel = (id: string | null) => {
     if (!id) return "Unassigned";
     const p = users.find((u) => u.id === id);
